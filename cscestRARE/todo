@@ -1,0 +1,39 @@
+1. ppg 
+2. parsLayout.h
+3. parsDefinition.h
+4. parsRelations.c
+5. initMeth.c
+6. BaseLevelRelations.c
+7. RARE.c
+8. installMethod
+   copyPPG
+
+
+
+
+
+ppg file; 
+	Only in csRARERandEnc/: csRARERandEnc.ppg
+	Only in RARE/: RARE.ppg
+	Only in csRARERandEnc/: csRARERandEnc.4ch
+	Only in RARE/: RARE.4ch
+Files RARE/parsLayout.h and csRARERandEnc/parsLayout.h differ
+Files RARE/parsDefinition.h and csRARERandEnc/parsDefinition.h differ
+Files RARE/parsRelations.c and csRARERandEnc/parsRelations.c differ
+Files RARE/initMeth.c and csRARERandEnc/initMeth.c differ
+Files RARE/BaseLevelRelations.c and csRARERandEnc/BaseLevelRelations.c differ
+
+Only in csRARERandEnc/: csRARERandEnc.c
+Only in RARE/: RARE.c
+
+Only in csRARERandEnc/: relProtos_p.h
+
+Only in csRARERandEnc/: installMethod
+Only in csRARERandEnc/: copyPPG
+Files RARE/Makefile and csRARERandEnc/Makefile differ
+
+
+
+
+
+

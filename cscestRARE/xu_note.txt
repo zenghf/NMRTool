@@ -1,0 +1,34 @@
+Define parameters:
+YesNo MT_Series
+Initial_MT_Offset
+Final_MT_Offset
+Number_Offset_Experiments
+Offset_Step_Hz
+MT_Offsets[]
+M0Flag ;use to determined if take MO
+LIST_MODE is a new class defined in parsType.h file
+MTOffsetMode;
+
+
+
+Relations:
+MTRels
+all display show/hiden was put in backbone,since MagTransonoff will not call MTRels.
+
+Layout:
+Cestparameters
+
+Pars:
+Calculte the MT_offsets;
+
+Baselevel:
+
+set O3 list size and offset
+if MagTran on will reset NR.
+
+ppg:
+in cest_Mgtrans2.mod change offset list to O3
+in ppg add o3list.inc before NR loop 
+NOTICE:ParxShowinEditor CAN not determine the parameter list is corret or not. Therefore, it is a common miske cause the diaply is empty.
+
+NOTICE: for unknow reason, the ppg "o3list<99000" will not work in simulation. but delay will works. Don't use offset as condition

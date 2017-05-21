@@ -1,0 +1,143 @@
+;****************************************************************
+;
+; Copyright (c) 2001 - 2003
+; Bruker BioSpin MRI GmbH
+; D-76275 Ettlingen, Germany
+;
+; All Rights Reserved
+;
+; EPI -  echo planar imaging method
+;
+;****************************************************************
+;
+; d0 - TR padding
+; d1 - refocusing
+; d2 - TE padding
+; d3 = PVM_RampTime + PVM_InterGradientWaitTime
+; d4 = PVM_RiseTime
+; d5 = spoiler
+; d7 - TE padding (spin echo)
+; d8 = CONFIG_amplifier_enable
+
+#include <MRI.include>
+
+preset off
+
+define delay durEpi = {$PVM_EpiModuleTime}
+"durEpi = durEpi/1000"
+
+;counter of dummy scans (not acquired; DS set to 0)
+define loopcounter lcDs
+"lcDs = l0"
+
+
+#include <epiHead.mod>
+#include <PrepModulesHead.mod>
+
+INIT_DEVICES
+
+lgrad r3d<3d> = L[2]
+
+lgrad slice = NSLICES
+zslice
+
+#include <TrigOutStart.mod>
+;____________H Zeng___________________________
+define delay delay_inv = <$FP_delayInv>
+define delay delay_after_inversion
+"delay_after_inversion = delay_inv - 20u - d5 - d4 - d8 - (p2 * 0.5) - (p1 * 0.5)"
+define list<power> flipPower = <$flipPowerList> ; power list for flip
+define list<delay> varTR = <$varTRList> ; variant TE list, in addition to PVM_EchoTime
+
+5u flipPower.res
+5u varTR.res
+start_inversion, p1:sp1 ph1
+delay_after_inversion
+
+;_____________________________________________
+
+start,  10u
+
+#include <TriggerPerPhaseStep.mod>
+#include <TrigOutVolume.mod>
+subr Tagging()
+;----------------------------------start of the main loop ----------
+slice, 	10u fq8b:f1
+
+#include <TriggerPerSlice.mod>
+#include <TrigOutSlice.mod>
+
+;----------------------------------preparation modules -------------
+subr SatSlices()
+subr MagTrans()
+subr FatSup()
+
+        d5	grad{(0)|(0)|(t2)}
+;----------------------------------slice selection------------------
+	d4 	grad{(0)|(0)|(t0)} fq1:f1 flipPower:f1
+        d8	gatepulse 1
+	;p0:sp0 	ph0
+  p0:sp0(currentpower) 	ph0
+	d3 	groff
+;----------------------------------slice rephase--------------------
+	d1 	grad{(0)|(0)|(t1)+r3d(t3)}
+	d4 	groff
+if(SignalType == SPINECHO_signal)
+{
+        d7
+	d9	grad{(0)|(0)|(t4)}
+	d4      grad{(0)|(0)|(t0)} gatepulse 1
+	p1:sp1  ph1
+	d9	grad{(0)|(0)|(t4)}
+	d4	groff
+}
+;----------------------------------TE padding-----------------------
+	d2
+        if "lcDs > 0" goto acqDs
+#include <epi.mod>
+goOn,	10u
+	d0 islice
+
+	lo to slice times NSLICES
+	zslice
+        d6	;inter-volume delay
+
+        "lcDs = lcDs - 1"
+        if "lcDs >= 0" goto start      ;dummy scans
+
+;----------------------------------averaging loop-------------------
+        2.5u ipp0
+	lo to start times NA
+;----------------------------------2d loop--------------------------
+	2.5u rpp0 igrad Interleaving
+	lo to start times PVM_EpiNShots
+	0u zgrad Interleaving
+;----------------------------------3d loop--------------------------
+if( ACQ_dim >= 3 )
+{
+	igrad r3d
+	lo to start times ACQ_size[2]
+}
+;----------------------------------repetitions loop-------------------
+0u flipPower.inc
+0u varTR.inc
+	lo to start times NR
+
+SETUP_GOTO(start)
+
+        goto bye
+
+;---------- "subroutines" -----------------------
+
+; ---- empty acquisition for dummy scans
+acqDs,  1u
+#include <epiDum.mod>
+        goto goOn
+
+
+
+bye,    1u
+exit
+
+ph0 = 0 2
+ph1 = 0

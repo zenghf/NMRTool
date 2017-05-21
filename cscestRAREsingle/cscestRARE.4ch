@@ -1,0 +1,197 @@
+;****************************************************************
+;
+; Copyright (c) 2002
+; Bruker BioSpin MRI GmbH
+; D-76275 Ettlingen, Germany
+;
+; All Rights Reserved
+;
+; a RARE imaging experiment
+;
+;****************************************************************
+;
+;
+; d0 - TR padding
+; d1, d2  - TE padding
+; d3 = PVM_GradDelayTime
+; d4 = PVM_RampTime
+; d8 = CONFIG_amplifier_enable
+
+#include <MRI.include>
+preset off
+
+define delay denab
+"denab = d4 + d3 - de"
+
+define delay d4d2m41u
+"d4d2m41u = d4 + d2 - 41u"
+
+define delay d3m5u
+"d3m5u = d3 - 5u"
+
+define delay d1md3
+"d1md3 = d1 - d3"
+
+define loopcounter lc1
+"lc1 = ds"
+
+#include <PrepModulesHead.mod>
+
+INIT_DEVICES
+
+subr FlowSatInit()
+
+if( ACQ_dim >=2 )
+{
+  lgrad r2d<2d> = ACQ_size[1]
+  zgrad r2d
+}
+if( ACQ_dim >= 3)
+{
+  lgrad r3d<3d> = ACQ_size[2]
+}
+else
+{
+  lgrad r3d<3d> = 1
+}
+  zgrad r3d
+
+lgrad slice = NSLICES
+zslice
+zgrad r2d
+
+;pre-setting the r2d counter for the dummy scans:
+decr,   dgrad r2d
+        lo to decr times l1	;DS*ACQ_rare_factor
+
+start,  1u	sgrad r2d
+acc,    9u
+
+if(PVM_BlBloodOnOff)
+{
+#include <TriggerPerPhaseStep.mod>
+}
+subr BlBlood(ph0)
+
+#include <TriggerPerPhaseStep.mod>
+subr SliceSelIr()
+
+slice,  10u	fq8b:f1 fq8b:f2 fq8b:f3 fq8b:f4	
+
+#include <TriggerPerSlice.mod>
+
+;----------------------------------preparation modules -------------
+subr FlowSat()
+subr SatSlices() 
+subr MagTrans()
+subr FatSup()
+
+        d4	grad{(0)|(0)|(t10)}
+        d9      
+;----------------------------------slice selection------------------	
+	d4 	grad{(0)|(0)|(t0)}
+	d3m5u	fq1:f1 fq1:f2 fq1:f3 fq1:f4
+        5u reset:f1 reset:f2 reset:f3 reset:f4
+        d8	gatepulse 1
+	p0:sp0 	ph0
+	d4 	groff
+	10u
+;----------------------------------slice rephase--------------------
+	d4 	grad{(t4)|(0)|(t1)}
+	d11 	
+	d4 	groff
+	d1      
+;---------------------------------- refocusing group ---------------------
+echo1,  0u	rgrad r2d		    
+echo,	d4      grad{(0)|(0)|(t3)}
+        d5
+        d4      grad{(0)|(0)|(t2)}  gatepulse 1
+        d3	
+        p1:sp1 	ph1
+        d3
+        d4      grad{(0)|(0)|(t3)}
+        d5
+        d4      groff         
+;----------------------------------- refocusing group - end -----------
+	d2
+;----------------------------------read on + phase encoding----
+	d4    grad{(t5)|r2d(t6)|r3d(t7)} ; 2nd and 3rd dims
+	d6
+	denab   grad{(t5)|(0)|(0)} 
+        ADC_INIT_B_4ch(ph0, ph1)  
+	aqq	ADC_START_4ch
+	d3	
+;----------------------------------read on + phase encoding----
+	d4	grad{(t5)|r2d(t8)|r3d(t9)} ; 2nd and 3rd dims
+	d6      
+	d4d2m41u groff
+	1u	 igrad r2d
+	ADC_END_4ch
+lo to echo times NECHOES/PVM_NEchoImages 
+lo to echo1 times PVM_NEchoImages
+
+if( PVM_FlipBackOnOff == On)
+{
+
+	d4      grad{(0)|(0)|(t3)}
+	d5
+        d4      grad{(0)|(0)|(t2)}  gatepulse 1
+        d3	
+        p1:sp1 	ph1
+        d3
+        d4      grad{(0)|(0)|(t3)}
+        d5
+        d4      groff         
+	d1md3  
+	d4 	grad{(t4)|(0)|(t1)}
+	d11 	
+	d4 	groff
+	10u
+	d4 	grad{(0)|(0)|(t0)}  gatepulse 1
+	d3	
+	p0:sp0 	ph3
+	d4 	groff
+
+}	
+
+;----------------------------------slice loop-----------------------
+	islice
+	d0
+subr FlowSatInc()
+	lo to slice times NSLICES
+	d10
+    zslice  
+	2.5u	ipp0
+	2.5u	ipp3
+;----------------------------------averaging loop-------------------
+	lo to acc times NA
+	2.5u	rpp0
+	2.5u	rpp3
+;----------------------------------2d loop--------------------------
+if( ACQ_dim >= 2 )
+{
+	"lc1 = lc1 - 1"		; this makes
+	if "lc1>=0" goto start	; dummy scans 
+
+	lo to start times l2	;ACQ_size[1]/ACQ_rare_factor
+}
+;----------------------------------3d loop--------------------------
+if( ACQ_dim >= 3 )
+{
+	igrad r3d
+	lo to start times ACQ_size[2]
+}
+        5u
+        lo to start times NAE
+        5u
+#include <Evolution.mod>
+        5u
+        lo to start times NR
+SETUP_GOTO(start)
+
+exit
+
+ph0 = 0 2
+ph1 = 1
+ph3 = 2 0
+

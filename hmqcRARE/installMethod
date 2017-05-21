@@ -1,0 +1,4 @@
+make clean cproto depend install
+make clean
+mv ~/methods/bin/hmqcRARE.so /opt/PV5.1/prog/parx/pub/
+cp *.ppg /opt/PV5.1/exp/stan/nmr/lists/pp
