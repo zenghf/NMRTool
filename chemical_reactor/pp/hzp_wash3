@@ -1,0 +1,54 @@
+;hzp_Trsf_Ret
+;Transfer and Return of the sample using parahydrogen polariser version v3
+
+
+;by default, the parahydrogen polarization experiments are performed in the following order
+;1: user loads the sample to the mixing chamber by clicking the button "load"
+;2: execute the pulse sequence
+;   a. use parahydrgoen to polarize the sample for a specifit time,
+;   b. then transfer the sample to the flowcell for NMR measurement;
+;   c. apply pulses, gradients and delays, and measure a spectrum
+;   d. transfer back the sample from the flowcell to the mixing chamber
+;3: user empties the mixing chamber by clicking the button "Empty" or "Empty save sample"
+; Haifeng Zeng 05/29/2012
+;$CLASS=HighRes
+;$DIM=1D
+;#define POL
+#include <Avance.incl>
+#include <Polariser.incl>
+
+define delay Time_IJP
+"Time_IJP=d40"
+define delay Time_EJP
+"Time_EJP=d42"
+define delay RD_time
+"RD_time=(d45-(d40+d42))/2"
+
+1 ze
+
+	subr IPSO_CMD()						;force to ipso mode
+
+;subr INJECT_POLARISER() 
+
+	F__IN_MIX_CHAMBER 				;Sample is in the polariser	
+
+2 RD_time										;recovery time
+
+  subr INJECT_PROBE() 			; transfer sample from polariser to probe.
+  Time_IJP									; delay for loading sample from the polariser to the flowcell.
+RD_time
+  subr EJECT_PROBE() 				; transfer sample from probe to polariser.
+  Time_EJP									; delay for the return sample from the flowcell to the polarizer.
+
+ lo to 2 times l0
+
+
+exit
+
+
+;d1 : relaxation delay; set to very short for hyperpolarisation experiments 
+;d40: delay for loading sample from the polariser to the flowcell
+;d42: delay for returning sample from the flowcell to the polarizer
+;d44: delay for emptying sample from the polarizer to  the vial
+;d45: delay betweem scans
+;l0 : accumulate L0 scans; re-polarising between scans

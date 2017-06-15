@@ -1,0 +1,56 @@
+/*-*-C++-*-********************************************************
+ *
+ * $Source: /sc/CvsTree/sc/gen/src/prg/makeau/inc/verification_h,v $
+ *
+ * Copyright (c) 2005
+ * BRUKER BIOSPIN GMBH
+ * D-76287 Rheinstetten, Germany
+ *
+ * All Rights Reserved
+ *
+ *
+ * $Id: verification_h,v 1.5 2009/03/31 16:19:05 wem Exp $
+ *
+ *******************************************************************
+*/
+
+#define APPEND_LOG(xxx)	\
+	currenttime = time(0);	\
+	strftime(logline, 10, "%H:%M:%S", localtime(&currenttime));	\
+	strncat(logline, xxx, 1015);	\
+	logline[1023] = 0;	\
+	logfp = fopen(logfile, "at");	\
+	if(logfp)	\
+	{	\
+		fprintf(logfp, logline);	\
+		fclose(logfp);	\
+	}
+
+#define APPEND_SUMMARY(xxx)	\
+	strncpy(summline, xxx, 1022);	\
+	summline[1023] = 0;	\
+	summfp = fopen(summfile, "at");	\
+	if(summfp)	\
+	{	\
+		fprintf(summfp, summline);	\
+		fclose(summfp);	\
+	}
+
+#define APPEND_FILE_TO_LOG(xxx)		\
+	logfp = fopen(logfile, "at");		\
+	if(logfp)							\
+	{									\
+		char fline[1024];				\
+		FILE* fp = fopen(xxx, "rt");	\
+		fline[1023] = 0;				\
+		if(fp)							\
+		{								\
+			while(!feof(fp))			\
+			{							\
+				fgets(fline, 1022, fp); \
+				fputs(fline, logfp);	\
+			}							\
+			fclose(fp);					\
+		}								\
+		fclose(logfp);					\
+	}

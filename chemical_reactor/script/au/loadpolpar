@@ -1,0 +1,52 @@
+int loadpolpar(void)
+{
+    char *filename = "test.txt";
+    char *pch;
+    FILE *infile;
+    char line_buffer[BUFSIZ]; /* BUFSIZ is defined if you include stdio.h */
+    char polValStr[10];
+    int k, nPolPar, nCmndChar, nPolValLen;
+    topSpin2PolStruct *p;
+    float polParVal;
+
+    nPolPar = sizeof(topSpin2PolArray) / sizeof(*topSpin2PolArray);
+
+    infile = fopen(filename, "r");
+    if (!infile) 
+    {
+        printf("Couldn't open file %s for reading.\n", inname);
+        return 0;
+    }
+    printf("Opened file %s for reading.\n", inname);
+
+
+    while (fgets(line_buffer, sizeof(line_buffer), infile) != NULL) 
+    {
+        for(k=0; k<nPolPar; k++)
+        {
+            p = topSpin2PolArray + k;
+            nCmndChar = sizeof(p->cmndName);
+            if (strncmp(line_buffer, p->cmndName, nCmndChar) == 0)
+            {
+                pch = strchr(line_buffer,' ');
+                nPolValLen = pch - line_buffer - nCmndChar;
+                strncpy(polValStr, line_buffer + nCmndChar, nPolValLen);
+                polValStr[nPolValLen] = '\0';
+                FETCHPAR(p->topSpinVarName, &polParVal);
+            }
+        }
+        printf("%4d: %s", line_number, line_buffer);
+    }
+    printf("\nTotal number of lines = %d\n", line_number);
+    fclose(infile );
+    return 0;
+}
+
+
+if (polWriteCmnd(bphp, p->cmndName, p->cmndType, polParVal, p->cmndValType, p->comments, 40, 1) < 0)
+{
+    sprintf(message, "\nError executing command < %s > with parameter <%.2f>\n Comments: setting <%s> ",
+        p->cmndName, polParVal, p->comments);
+    STOPMSG( message );
+    return -1;
+}

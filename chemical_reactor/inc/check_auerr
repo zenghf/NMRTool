@@ -1,0 +1,41 @@
+/********************-*-C++-*-****************************************
+*
+* $Source: /sc/CvsTree/sc/gen/src/prg/makeau/inc/check_auerr,v $
+*
+* Copyright (c) 1995
+* BRUKER ANALYTISCHE MESSTECHNIK GMBH
+* D-76287 Rheinstetten, Germany
+*
+* All Rights Reserved
+*
+*
+* $Locker:  $
+* $State: Exp $
+* $Name: topspin_3_0_pl4 $
+* $Log: check_auerr,v $
+* Revision 1.4  2007/12/05 16:33:55  ge
+* new data path
+*
+* Revision 1.3  1996/04/04 15:22:12  ge
+* corrected /u and headers, new perl-script makeau
+*
+* Revision 1.2  1995/12/01 14:02:26  gsc
+* sca_start
+*
+*
+********************************************************************
+*/
+{
+switch (AUERR )
+   {
+   default:
+       Proc_err(DEF_ERR_OPT,"AUERR = %d in line %d",__LINE__);
+
+   case COMMAND_DONE:
+      break;
+   case SKIP_EXP:
+   case SKIP_SAMPLE:
+   case STOP_CHANGER:
+      return(AUERR);
+   }
+}

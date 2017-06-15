@@ -1,0 +1,197 @@
+/*-*-C++-*-********************************************************
+ *
+ * $Source: /sc/CvsTree/sc/gen/src/prg/makeau/inc/teutil,v $
+ *
+ * Copyright (c) 1995
+ * BRUKER BIOSPIN GMBH
+ * D-76287 Rheinstetten, Germany
+ *
+ * All Rights Reserved
+ *
+ * $Id: teutil,v 1.3 2007/12/05 16:34:13 ge Exp $
+ *
+ *******************************************************************
+ */
+
+/*--------------------------------------------------------*/
+/*- Functions for temperature stability and calibration --*/
+/*--------------------------------------------------------*/
+
+#define GLYCOL 0
+#define GLYCOLP 1
+#define METHANOL 2
+#define METHANOLP 5
+
+/*--------------------------------------------------------*/
+/*--------------- Asks for sample type -------------------*/
+/*--------------------------------------------------------*/
+
+int SampleType(float te)
+{
+  char Glycol_Methanol, EG_Pur;
+  char Response[10];
+  char Question[80];
+  int sample = 0;
+  int satisfied = 0;
+  do
+  {
+    if (te < 290.0) 
+      Glycol_Methanol = 'M';		/* Methanol used	*/
+    else
+      if (te > 310.0)
+	Glycol_Methanol = 'G';		/* Glycol used		*/
+      else
+      {					/* User choice		*/ 
+	sprintf(Response,"G");		/* Default value	*/
+	GETSTRING("(G)lycol or (M)ethanol :",Response)
+	if (isupper(Response[0]))
+          Glycol_Methanol = Response[0];
+        else
+          Glycol_Methanol = _toupper(Response[0]);
+      }
+
+    switch (Glycol_Methanol)
+    {
+      case 'G' : sprintf(Question,"Glycol (P)ure or (B)ruker Glycol sample : ");
+		 break;
+      case 'M' : sprintf(Question,"Methanol (P)ure or (B)ruker Methanol sample : ");
+		 break;
+      default  : STOPMSG(" Program failed : Invalid answer ");
+		 break;
+    }
+
+    sprintf(Response,"B");
+    GETSTRING(Question,Response);
+    if (isupper(Response[0]))
+      EG_Pur = Response[0];
+    else
+      EG_Pur = _toupper(Response[0]);
+    switch (EG_Pur)
+    {
+      case 'P' : break;
+      case 'B' : break;
+      default  : STOPMSG(" Program failed : Invalid answer ");
+    }
+    sprintf(Response,"YES");
+
+    switch (Glycol_Methanol)
+    {
+      case 'G' : if (EG_Pur == 'P') 
+		 {
+		   sample = GLYCOLP;
+		 }
+	         else
+		 {
+		   sample = GLYCOL;
+		 }
+		 break;
+
+      case 'M' : if (EG_Pur == 'P') 
+		 {
+		   sample = METHANOLP;
+		 }
+		 else
+		 {
+		   sample = METHANOL;
+		 }
+		 break;
+    }
+
+/*-------------------------------------------------------*/
+/*--- Find out whether sample choice is satisfactory ----*/
+/*-------------------------------------------------------*/
+    
+    sprintf(Response,"Y");		/* Default value */
+    if (Proc_err(QUESTION_OPT, "You chose the following sample : %d\n\
+Gly=0, Gly_pur=1, MeOH=2, MeOH_pur=5.  OK?",sample) != ERR_OK)
+    {
+      satisfied = 0;
+    }
+    else
+    {
+      satisfied = 1;
+    }
+  } while ( satisfied != 1);
+return sample;
+}
+
+/*--------------------------------------------------------*/
+/*-------------- Calculate temperature -------------------*/ 
+/*--------------------------------------------------------*/
+
+double CalcTemp (double delta,int sample,double *coefa,double *coefb)
+{
+  int i;
+  static double TPDef[8][4] = {{300.0,380.0,-108.33,460.41},
+			       {300.0,380.0, -99.00,463.00},
+			       {1.7600,1.4222,-114.83,471.85},
+			       {2.0800,1.7600,-125.00,490.00},
+			       {2.4300,2.0800,-140.00,521.33},
+			       {1.8240,1.4200,-108.60,468.10},
+			       {2.1474,1.8240,-124.98,498.40},
+			       {2.5028,2.1474,-142.80,537.40}};
+
+  if(delta<0)
+    delta=-1.0*delta;
+
+  switch (sample)
+  {
+    case GLYCOL :	*coefa = TPDef[GLYCOL][2];
+			*coefb = TPDef[GLYCOL][3];
+			break;
+
+    case GLYCOLP :	*coefa = TPDef[GLYCOLP][2];
+			*coefb = TPDef[GLYCOLP][3];
+			break;
+
+    case METHANOL :	for (i=0; i < 3; i++)
+			{
+			  if ((delta >= TPDef[METHANOL+i][1]) && (delta <= TPDef[METHANOL+i][0])) 
+			  {
+			    *coefa = TPDef[METHANOL+i][2];
+			    *coefb = TPDef[METHANOL+i][3];
+			  }
+			} 
+			break;
+
+    case METHANOLP :	for (i=0; i < 3; i++)
+			{
+			  if ((delta >= TPDef[METHANOLP+i][1]) && (delta <= TPDef[METHANOLP+i][0])) 
+			  {
+			    *coefa = TPDef[METHANOLP+i][2];
+			    *coefb = TPDef[METHANOLP+i][3];
+			  }
+			} 
+			break;
+  }
+  return (*coefa * delta + *coefb);
+  }
+
+/*--------------------------------------------------------*/
+/*-------------- Calculate sums --------------------------*/
+/*--------------------------------------------------------*/
+double  Summation(double te[], int size)
+{
+  int i=0;
+  double sum=0.0;
+  for(i=0;i<size;i++)
+  {
+    sum=sum+te[i];
+  }
+  return sum;
+}
+
+/*--------------------------------------------------------*/
+/*-------------- Calculate sums and products -------------*/ 
+/*--------------------------------------------------------*/
+
+double  Sumprod(double te[], double delta[],int size)
+{
+  int i=0;
+  double sum=0.0;
+  for(i=0;i<size;i++)
+  {
+    sum=sum+te[i]*delta[i];
+  }
+  return sum;
+}

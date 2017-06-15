@@ -1,0 +1,21 @@
+[Title]
+Text=600MHz RZ H-Magnet
+Project=ZPKE0124
+[Magnet]
+Magnet=BZH08'60'70H02
+Dewar=D355-54-4815
+[NMR]
+Substance=doped water 40mm
+Sample=Z10906
+Batch=08445 A
+Gasflow=535l/h
+Lock=1
+Shim=autoshim off
+[Vibration Isolator]
+Type=API
+Model=TMC MD2500
+Stand=F95-700
+Supplypressure=6bar
+[System specific parameters]
+[Remarks]
+Operator=RSA

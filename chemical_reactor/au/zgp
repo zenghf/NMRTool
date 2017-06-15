@@ -1,0 +1,181 @@
+/*** ^^A -*-C++-*- **********************************************/
+/*	zgp		          			*/
+/****************************************************************/
+/*	Short Description :					*/
+/*	Performs parahydrogen polarization experiment	*/
+/*      Set the polariser field value from CNST31               */
+/****************************************************************/
+/*	Keywords :						*/
+/*	parahydrogen					*/
+/****************************************************************/
+/*	Description/Usage :					*/
+/*	This AU program performs one parahydrogen polarization */
+/*     experiment*/
+/*  The polariser field value for the polariser is set      */
+/*      from pulse program constant name ex. CNST31 prior to    */
+/*	execution of the experiment.       			*/
+/*	Thhe magnetic field of the parahydrogen polariser will  */
+/*      be set by polarize command: #H1:GA=value		*/
+/****************************************************************/
+/*	Author(s) :						*/
+/*	Name		: Haifeng Zeng			*/
+/*	Organisation	: JHMI			*/
+/*	Email		: hzeng6@jhmi.edu*/
+/****************************************************************/
+/*	Name		Date	Modification:			*/
+/*  hz  		Aug-14-2012  created 			*/
+/****************************************************************/
+/*
+$Id: multizg_ph_b0,v 1.2 2012/03/13 13:27:27 hb Exp $
+*/
+
+AUERR = zgp(curdat, cmd);
+QUIT
+
+#include <inc/exptUtil>
+#include <inc/polariseUtil.vs3>
+
+
+int zgp(const char* curdat, const char* cmd)
+{
+TTY_DEVICE bphp;
+char resultExpected[PATH_MAX];
+char *envpnt, statusline[1024], message[1024], text[PATH_MAX+400];
+char *answer;
+int expTime, zgsafety;
+int ret;
+FILE *titlefp;
+
+char i1_str[20], polField_str[20], polFieldInc_str[20], pulseprog[80];
+int i1 = 0;
+
+int i = 0, timeout = 40;
+char debugmessage[1024];
+char gaSet[128], constantVariable[28];
+int constantVariableIndex = 31;
+float polField, maxPolField=148;
+
+pulseprog[0] = 0;
+
+sprintf(constantVariable, "CNST %d", constantVariableIndex);
+FETCHPAR(constantVariable, &polField);    /* default read "CNST 31" */
+
+/* Validate polField */
+if (fabs(polField) > maxPolField)
+{
+    sprintf(message, "Polarizer Field %.2f  Out Of Range\nLimit is %.2f",
+        polField,maxPolField);
+    STOPMSG( message );
+}
+
+if (openbphp(&bphp) < 0)
+{
+    Proc_err(DEF_ERR_OPT, "zgp: openbphp < 0");
+    return -1;
+}
+
+/* Turn zg safety off if on. Turn it back on at the end. */
+envpnt = getenv("UXNMR_SAFETY");
+zgsafety = 0;
+if (envpnt != NULL)
+{
+    if (strcasecmp(envpnt, "on") == 0)
+    {
+        zgsafety = 1;
+        CPR_exec("env set UXNMR_SAFETY=off", WAIT_TERM);
+    }
+}
+
+SETCURDATA
+
+if (DEBUG==1)
+{
+    (void)sprintf( message, "\nTaken value of %.2f from CNST %d\n", polField, constantVariableIndex );
+    printf( message );
+}
+(void)sprintf( polCmnd, "#H1:GA=%.2f", polField);
+
+/* we expect polCmnd + OK */
+sprintf(resultExpected, "%s OK", polCmnd);
+
+/* Terminate command string with a CR character */
+strcat(polCmnd,"\r");
+
+/* Set field on polarizer and check value is set before proceeding */
+/* gaSet is the value of the field as read from the polarizer */ 
+if (DEBUG==1)
+{
+    (void)sprintf( message, "Set the command to be sent to the polarizer ( %s ) for the field %.2f\n", 
+        polCmnd, polField );
+    printf( message );
+
+    (void)sprintf( debugmessage, "\nValue to compare with response from polarizer set to %.2f\n", polField);
+    printf(debugmessage);
+}
+
+strcpy(gaSet, "");      /* init before read and compare */
+i=0;                  /* init for next expno experiment */
+while((strncmp(gaSet, resultExpected, strlen(resultExpected)-3) != 0) && ( i <= timeout ))
+{
+    (void) sprintf(statusline,"Setting polarizer field to %.2f Gauss", polField);
+    Show_status(statusline);
+
+    if ((i==0) && (ret = writeCmnd( &bphp, polCmnd)) <0 )    /* write to polarizer */
+        return -1;
+    if (readResponse(&bphp, polResponse) <0)
+        return -1;
+    (void)sprintf(gaSet, "%s", polResponse);
+
+    if(DEBUG==1)
+    {
+        (void)sprintf( debugmessage, "\nComparing value read from polariser: %s with value sent: %s",
+            gaSet, polCmnd);
+        printf(debugmessage);
+    }
+    i++;
+
+    if (i==timeout)
+    {
+        (void)sprintf( debugmessage, "\nFailed to set polariser to field %s after %d attempts", 
+            polCmnd , timeout);
+        if (DEBUG==1)
+            printf(debugmessage);
+        STOPMSG( debugmessage );
+    }
+}
+
+(void) sprintf(statusline,"Successfully set polarizer field value to %.2f Gauss", polField);
+
+if(DEBUG==1)
+{
+    (void)sprintf( debugmessage, "\n%s, start ZG\n", statusline);
+    printf(debugmessage);
+}
+Show_status(statusline);
+
+/**************************************************************
+write PULPROG name and polarizer field value into title file
+***************************************************************/
+if ((titlefp = fopen(PROCPATH("title"), "at")) == NULL)
+{
+    Proc_err(DEF_ERR_OPT, "Can't open %s\n%s",
+    PROCPATH("title"), strerror(errno));
+    return 0;
+}
+FETCHPAR("PULPROG", pulseprog)
+if(strlen(pulseprog)>0)
+    /*(void)fprintf(titlefp, "\nPULPROG: %s",  pulseprog);*/
+(void)fprintf(titlefp, "\nPolarizer field: %.2f Gauss\n", polField);
+fclose (titlefp);
+
+sleep(2);           
+
+ZG
+
+if (zgsafety == 1)
+CPR_exec("env set UXNMR_SAFETY=on", WAIT_TERM);
+
+return 0;
+}
+
+

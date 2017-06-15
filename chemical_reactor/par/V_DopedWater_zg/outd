@@ -1,0 +1,17 @@
+##TITLE= Parameter file, TOPSPIN		Version 2.1
+##JCAMPDX= 5.0
+##DATATYPE= Parameter Values
+##NPOINTS= 3	$$ modification sequence number
+##ORIGIN= UXNMR, Bruker Analytische Messtechnik GmbH
+##OWNER= root
+$$ 2011-08-02 14:45:41.773 +0200  rsa@EP-10002836
+$$ C:/Bruker/TOPSPIN/exp/stan/nmr/par/user/V_DopedWater_zg/outd
+$$ process C:\Bruker\TOPSPIN\prog\mod\edparproc.exe
+##$CURPLOT= <  >
+##$CURPRIN= <>
+##$DFORMAT= <normdp>
+##$LAYOUT= <+/1D_H.xwp>
+##$LFORMAT= <normlp>
+##$PFORMAT= <normpl>
+##$SURQMSG= 1
+##END=

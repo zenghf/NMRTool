@@ -1,0 +1,564 @@
+/*-*-C++-*-******************************************************
+*
+* $Source: /sc/CvsTree/sc/gen/src/prg/makeau/inc/linutil,v $
+*
+* Copyright (c) 1995
+* BRUKER BIOSPIN GMBH
+* D-76287 Rheinstetten, Germany
+*
+* All Rights Reserved
+*
+*
+* $Id: linutil,v 1.14 2010/02/09 10:38:37 wem Exp $
+*
+*****************************************************************
+*/
+
+/****************************************************************/
+/*	peakwidth		09.06.1997 ENG			*/
+/****************************************************************/
+/*	This function calculates the width of a peak at two	*/
+/*	different positions (upval and lowval). It does this by	*/
+/*	descending from the top of the peak to a given		*/
+/*	threshold (upthr) on both sides of the peak. From this	*/
+/*	point on down to a second threshold (lowval) all points	*/
+/*	are read into an T1 ascii file. To ensure a good fit,	*/
+/*	confidfact times more points are read. They are then	*/
+/*	fitted (for each side individually) with the command	*/
+/*	simfit asc. Once the parameters for the fit equation	*/
+/*	have been determined, the widths at upval and lowval	*/
+/*	are calculated. They are written to a file from which	*/
+/*	they can be read for further usage.			*/
+/*	This function is, for instance, used in the AU		*/
+/*	programs which determine the peak width ratio for	*/
+/*	the hump test and the water suppression test.		*/
+/*	uphtr, upval and lowval are all absolute intensity !	*/
+/****************************************************************/
+
+#define MAXPT 2048
+#define DEBUGMODE 0
+
+/* fit 2 exponentials and return position of lowval in fit */
+double fit2exp(double val1, double val2, double val3, double val4, double lowval,
+	       double maxl, int noofpoi, const char* side)
+{
+    double xin = 0.95;
+    double lowwid;
+    double xsum = lowwid = (double)lowval;
+    while ( xsum >= lowwid )
+    {
+	xin += 0.05;
+	xsum = maxl*(val1*exp(-xin/val2)+val3*exp(-xin/val4));
+	if ( xin > noofpoi )
+	    break;
+    }
+
+    if ((xin == 1.0) || (xin > noofpoi))
+	Proc_err(DEF_ERR_OPT,"Problems with fitting the %s\n"
+		 "side of the signal. Peak picking or\n"
+		 "phasing has not been done properly.\n"
+		 "xin = %f\n"
+		 "Correct this and repeat the calculation.", side, xin);
+
+    return xin;
+}
+
+int peakwidth (const char* curdat, int startl,int startr, int upthr, int upval,
+	       int lowval, int minpoints,
+	       double confidfact, double* upl, double* upr, double* lowl,
+	       double* lowr, double* upwidth, double* lowwidth)
+{
+    char path[PATH_MAX], t1ascii[PATH_MAX];
+    double sf, sw, hzppt, val1, val2, val3, val4, val5, val6, val7, val8;
+    double xin, maxl, maxr;
+    float ysta, offset;
+    int si, saveprocno, fd;
+    int ii, jj, kk, ret, noofpoi, disleft, disright, secminfound;
+    size_t bytetoread;
+    int* inbufint;
+    FILE* fp;
+
+    FETCHPARS("SW_p",&sw);
+    FETCHPARS("SI",&si);
+    FETCHPARS("SF",&sf);
+    FETCHPARS("OFFSET",&offset);
+    hzppt = sw/si;
+
+    /* Create data sets where we want to store the fits */
+
+    saveprocno = procno;
+    DATASET(name,expno,991,disk,user);
+    DATASET(name,expno,992,disk,user);
+
+	/* switch back to original data set */
+
+    procno=saveprocno;
+    DATASET(name,expno,saveprocno,disk,user);
+
+	/* path is path to 1r file - open and read it */
+
+    strcpy(path, PROCPATH("1r"));
+    if ((fd = open(path, O_RDONLY)) == -1)
+    {
+	Perror(DEF_ERR_OPT, path);
+	ABORT;
+    }
+
+    /* Read up to a maximum of MAXPT points, but not more than SI */
+
+    if (MAXPT >= si/2)
+    {
+	noofpoi = si/2;
+	bytetoread = si/2;
+    }
+    else
+    {
+	noofpoi = MAXPT;
+	bytetoread = MAXPT;
+    }
+
+#if DEBUGMODE
+    Proc_err(DEF_ERR_OPT,
+	     "startl = %d, startr = %d\n"
+	     "upthr = %d, upval = %d, lowval = %d\n"
+	     "minpoints = %d, noofpoi = %d",
+	     startl, startr, upthr, upval, lowval, minpoints, noofpoi);
+#endif
+
+    /* Do we have enough points around the peak for the full analysis ? */
+
+    if (startl - noofpoi + 1 < 0  ||  startr + noofpoi - 1 > si)
+    {
+	Proc_err(DEF_ERR_OPT,
+		 "Peak too close to left or right\n"
+		 "border of the spectrum.\n"
+		 "Please change acquisition parameters\n"
+		 "or increase processing size SI.");
+	close(fd);
+	ABORT;
+    }
+
+    /* Get memory for all points */
+
+    if ((inbufint = (int*)calloc(bytetoread, sizeof(int))) == 0)
+    {
+	Proc_err(DEF_ERR_OPT,"Not enough memory");
+	close(fd);
+	ABORT;
+    }
+
+    bytetoread *= sizeof(int);
+    /* Read all noofpoi points for analysis of left lineshape */
+
+    if ((ret = lseek(fd, (startl-noofpoi+1) * sizeof(int), SEEK_SET)) == -1)
+    {
+	Perror(DEF_ERR_OPT, path);
+	close(fd);
+	free(inbufint);
+	ABORT;
+    }
+
+    ret = read(fd, inbufint, bytetoread);
+    if (ret < 0)
+    {
+	Perror(DEF_ERR_OPT, path);
+	close(fd);
+	free(inbufint);
+	ABORT;
+    }
+    if ((size_t)ret != bytetoread)
+    {
+	Proc_err(DEF_ERR_OPT, "%s/n%s", path, "read off limits");
+	close(fd);
+	free(inbufint);
+	ABORT;
+    }
+
+    /* Discard all points bigger than upthr (left side of the peak) */
+
+    for ( ii = noofpoi-1; ii >= 0; ii-- )
+    {
+	if ( inbufint[ii] < upthr )
+	    break;
+    }
+    if ( ii == 0 )
+    {
+	Proc_err(DEF_ERR_OPT, "This peak is very broad and therefore\n"
+		  	      "not suitable for this type of calculation.\n"
+			      "Please check experiment.");
+	close(fd);
+	free(inbufint);
+	ABORT;
+    }
+    if ( ii == noofpoi-1 )
+    {
+	Proc_err(DEF_ERR_OPT, "The first point read is already\n"
+			      "smaller than the upper threshold.\n"
+			      "Please check experiment.");
+	close(fd);
+	free(inbufint);
+	ABORT;
+    }
+
+    ii++; /* Now we are below upthr, go back one point */
+
+    disleft = noofpoi-1-ii; /* save the last discarded point number */
+
+#if DEBUGMODE
+    Proc_err(DEF_ERR_OPT, "disleft = %d, ii = %d", disleft, ii);
+#endif
+
+    /* t1ascii is path to ASCII file for simfit fit - open it */
+
+    strcpy(t1ascii, NEWPROCPATH(991, "t1ascii"));
+    if ( (fp = fopen (t1ascii,"wt")) == NULL )
+    {
+	Perror (DEF_ERR_OPT,t1ascii);
+	close(fd);
+	free(inbufint);
+	ABORT;
+    }
+
+    /* Write header line into t1ascii file : 1 means one 'peak' to fit */
+
+    fprintf (fp,"SIMFIT 1\n");
+
+    /* Get all points bigger than lowval and	*/
+    /* write them to t1ascii for simfit fitting.	*/
+
+    kk = 1;
+    for ( jj = ii; jj >= 0; jj-- )
+    {
+	/* read at least minpoints points to avoid early spike ! */
+	if ( (inbufint[jj] > lowval) || (kk < minpoints) )
+	{
+	    fprintf (fp,"%d   %d\n",kk,inbufint[jj]);
+	    kk++;
+	}
+	else
+	{
+	    break;
+	}
+    }
+
+#if DEBUGMODE
+    Proc_err(DEF_ERR_OPT, "kk(left) = %d, noofpoi = %d\n"
+			  "how many left = %d\n"
+			  "jj(remain) = %d",
+	     kk, noofpoi, disleft+kk+(int)(confidfact*kk), jj);
+#endif
+
+    /* We have read kk points (starting with point ii !). We	*/
+    /* want to read confidfact times more points. Are there	*/
+    /* enough points left ? If not, read remaining points only. */
+    /* disleft		: number of discarded points		*/
+    /* kk		: number of already read points		*/
+    /* confidfact * kk	: number of additional points		*/
+
+    secminfound = 0;
+
+    if (disleft + kk + (int)(confidfact*kk) > noofpoi)
+    {
+#if DEBUGMODE
+	Proc_err(DEF_ERR_OPT, "in read remaining only (left side)");
+#endif
+
+	/* not enough points left, read remaining points only. */
+	for ( ii = jj; ii >= 0; ii-- )
+	{
+	    if ( inbufint[ii] < lowval )
+		secminfound = 1;
+	    fprintf (fp,"%d   %d\n",kk,inbufint[ii]);
+	    kk++;
+	}
+    }
+    else
+    {
+	/* enough points left, read confidfact times more points. */
+	for ( ii = (int)(confidfact*kk); ii >= 0; ii--, jj-- )
+	{
+	    if ( inbufint[jj] < lowval )
+		secminfound = 1;
+	    fprintf (fp,"%d   %d\n",kk,inbufint[jj]);
+	    kk++;
+	}
+    }
+
+    fclose(fp);
+
+    if (secminfound == 0)
+    {
+	Proc_err(DEF_ERR_OPT, "No point with an intensity less than\n"
+			      "the given lower threshold found.\n"
+			      "No fitting possible on the\n"
+			      "left side of the peak.\n"
+			      "Please check experiment.");
+	close(fd);
+	free(inbufint);
+	ABORT;
+    }
+
+    /* Read all noofpoi points for analysis of right lineshape */
+
+    if ((ret = lseek(fd, startr * sizeof(int), SEEK_SET)) == -1)
+    {
+	Perror(DEF_ERR_OPT,path);
+	close(fd);
+	free(inbufint);
+	ABORT;
+    }
+
+    ret = read(fd, inbufint, bytetoread);
+    if (ret < 0)
+    {
+	Perror(DEF_ERR_OPT, path);
+	close(fd);
+	free(inbufint);
+	ABORT;
+    }
+    if ((size_t)ret != bytetoread)
+    {
+	Proc_err(DEF_ERR_OPT, "%s/n%s", path, "read off limits");
+	close(fd);
+	free(inbufint);
+	ABORT;
+    }
+
+    close(fd);
+
+    /* Discard all points bigger than upthr (right side of the peak) */
+
+    for ( ii = 0; ii < noofpoi; ii++ )
+    {
+	if ( inbufint[ii] < upthr )
+	    break;
+    }
+    if ( ii == noofpoi-1 )
+    {
+	Proc_err(DEF_ERR_OPT, "This peak is very broad and therefore\n"
+			      "not suitable for this type of calculation.\n"
+			      "Please check experiment.");
+	free(inbufint);
+	ABORT;
+    }
+    if ( ii == 0 )
+    {
+	Proc_err(DEF_ERR_OPT, "The first point read is already\n"
+			      "smaller than the upper threshold.\n"
+			      "Please check experiment.");
+	free(inbufint);
+	ABORT;
+    }
+
+    ii--; /* Now we are below upthr, go back one point */
+
+    disright = ii - 1; /* save the last discarded point number */
+
+#if DEBUGMODE
+    Proc_err(DEF_ERR_OPT, "disright = %d, ii = %d", disright, ii);
+#endif
+
+    /* t1ascii is path to ASCII file for simfit fit - open it */
+
+    strcpy(t1ascii, NEWPROCPATH(992, "t1ascii"));
+    if ((fp = fopen(t1ascii, "wt")) == 0)
+    {
+	Perror (DEF_ERR_OPT,t1ascii);
+	free(inbufint);
+	ABORT;
+    }
+
+    /* Write header line into t1ascii file : 1 means one 'peak' to fit */
+
+    fprintf (fp,"SIMFIT 1\n");
+
+    /* Get all points bigger than lowval and	*/
+    /* write them to t1ascii for simfit fitting.	*/
+
+    kk = 1;
+    for ( jj = ii; jj < noofpoi; jj++ )
+    {
+	/* read at least minpoints points to avoid early spike ! */
+	if ( (inbufint[jj] > lowval) || (kk < minpoints) )
+	{
+	    fprintf (fp,"%d   %d\n",kk,inbufint[jj]);
+	    kk++;
+	}
+	else
+	    break;
+    }
+
+#if DEBUGMODE
+    Proc_err(DEF_ERR_OPT, "kk(right) = %d, noofpoi = %d\n"
+		 	  "How many left = %d\n"
+			  "jj(remain) = %d",
+	     kk, noofpoi, disright+kk+(int)(confidfact*kk), jj);
+#endif
+
+    /* We have read kk points (starting with point ii !). We	*/
+    /* want to read confidfact times more points. Are there	*/
+    /* enough points left ? If not, read remaining points only.	*/
+    /* disright		: number of discarded points		*/
+    /* kk		: number of already read points		*/
+    /* confidfact * kk	: number of additional points		*/
+
+    secminfound = 0;
+
+    if (disright + kk + (int)(confidfact*kk) > noofpoi)
+    {
+#if DEBUGMODE
+	Proc_err(DEF_ERR_OPT, "in read remaining only (right side)");
+#endif
+
+	/* not enough points left, read remaining points only. */
+	for ( ii = jj; ii < noofpoi; ii++ )
+	{
+	    if ( inbufint[ii] < lowval )
+		secminfound = 1;
+	    fprintf (fp,"%d   %d\n",kk,inbufint[ii]);
+	    kk++;
+	}
+    }
+    else
+    {
+	/* enough points left, read confidfact times more points. */
+	for ( ii = (int)(confidfact*kk); ii >= 0; ii--, jj++ )
+	{
+	    if ( inbufint[jj] < lowval )
+		secminfound = 1;
+	    fprintf (fp,"%d   %d\n",kk,inbufint[jj]);
+	    kk++;
+	}
+    }
+
+    fclose(fp);
+    free(inbufint);
+
+    if (secminfound == 0)
+    {
+	Proc_err(DEF_ERR_OPT, "No point with an intensity less than\n"
+			      "the given lower threshold found.\n"
+			      "No fitting possible on the\n"
+			      "right side of the peak.\n"
+			      "Please check experiment.");
+	ABORT;
+    }
+
+    /* Go to the left side of the peak. Do simfit asc */
+
+    DATASET(name,expno,991,disk,user);
+    STOREPAR("CURPRIN","simfit.out");
+    STORET1PAR("FCTTYPE",4);			       /* exponential decay */
+    STORET1PAR("COMPNO",2);				  /* two components */
+    STORET1PAR("GUESSES 0",0.75);		      /* guess for first I0 */
+    STORET1PAR("GUESSES 1",10.0);		       /* guess for first T */
+    STORET1PAR("GUESSES 2",0.25);		     /* guess for second I0 */
+    STORET1PAR("GUESSES 3",100.0);		      /* guess for second T */
+    STORET1PAR("GUESSES 12",0.1);		  /* step rate for first I0 */
+    STORET1PAR("GUESSES 13",1.0);		   /* step rate for first T */
+    STORET1PAR("GUESSES 14",0.1);		 /* step rate for second I0 */
+    STORET1PAR("GUESSES 15",10.0);		  /* step rate for second T */
+    XCMD("simfit asc");
+
+    /* Read fit parameters for later width calculation */
+
+    FETCHT1PAR("PARM 0",&val1);
+    FETCHT1PAR("PARM 1",&val2);
+    FETCHT1PAR("PARM 2",&val3);
+    FETCHT1PAR("PARM 3",&val4);
+    FETCHT1PAR("Y_END",&ysta);
+    maxl = (double)ysta;			 /* scaling reference point */
+
+    /* Go to the right side of the peak. Do simfit asc */
+
+    DATASET(name,expno,992,disk,user);
+    STOREPAR("CURPRIN","simfit.out");
+    STORET1PAR("FCTTYPE",4);			       /* exponential decay */
+    STORET1PAR("COMPNO",2);				  /* two components */
+    STORET1PAR("GUESSES 0",0.75);		      /* guess for first I0 */
+    STORET1PAR("GUESSES 1",10.0);		       /* guess for first T */
+    STORET1PAR("GUESSES 2",0.25);		     /* guess for second I0 */
+    STORET1PAR("GUESSES 3",100.0);		      /* guess for second T */
+    STORET1PAR("GUESSES 12",0.1);		  /* step rate for first I0 */
+    STORET1PAR("GUESSES 13",1.0);		   /* step rate for first T */
+    STORET1PAR("GUESSES 14",0.1);		 /* step rate for second I0 */
+    STORET1PAR("GUESSES 15",10.0);		  /* step rate for second T */
+    XCMD("simfit asc");
+
+    /* Read fit parameters for later width calculation */
+
+    FETCHT1PAR("PARM 0",&val5);
+    FETCHT1PAR("PARM 1",&val6);
+    FETCHT1PAR("PARM 2",&val7);
+    FETCHT1PAR("PARM 3",&val8);
+    FETCHT1PAR("Y_END",&ysta);
+    maxr = (double)ysta; /* scaling reference point */
+
+    DATASET(name,expno,saveprocno,disk,user);
+
+#if DEBUGMODE
+    Proc_err(DEF_ERR_OPT, "maxl = %f\nmaxr = %f", maxl, maxr);
+#endif
+
+    /* Calculate widths according to the simfit formula :	*/
+    /* I=I[0]*(pa[1]*exp(-v/pa[2])+ pa[3]*exp(-v/pa[4]))	*/
+    /* (exponential decay of two components)		*/
+    /* What we need is the point number at a given	*/
+    /* intensity. So we calculate the intensities with	*/
+    /* an accuracy of 0.05 points.			*/
+
+    /* left side, width at lowval */
+    xin = fit2exp(val1, val2, val3, val4, lowval, maxl, noofpoi, "lower left");
+    if ((xin == 1.0) || (xin > noofpoi))
+	ABORT;
+    *lowwidth = hzppt*(xin+(disright+disleft-1+(startr-startl)));
+    *lowl = xin;
+
+#if DEBUGMODE
+    Proc_err(DEF_ERR_OPT, "lowwidth = %f\n1st point = %f\nlowl = %f",
+	     *lowwidth, maxl*(val1*exp(-1.0/val2)+val3*exp(-1.0/val4)), *lowl);
+#endif
+
+    /* right side, width at lowval */
+    xin = fit2exp(val5, val6, val7, val8, lowval, maxr, noofpoi, "lower right");
+    if ((xin == 1.0) || (xin > noofpoi))
+	ABORT;
+    *lowwidth += hzppt*xin;
+    *lowr = xin;
+
+#if DEBUGMODE
+    Proc_err(DEF_ERR_OPT, "lowwidth = %f\n1st point = %f\nlowr = %f",
+	     *lowwidth, maxl*(val5*exp(-1.0/val6)+val7*exp(-1.0/val8)), *lowr);
+#endif
+
+    /* left side, width at upval */
+    xin = fit2exp(val1, val2, val3, val4, upval, maxl, noofpoi, "upper left");
+    if ((xin == 1.0) || (xin > noofpoi))
+	ABORT;
+    *upwidth = hzppt*(xin+(disright+disleft-1+(startr-startl)));
+    *upl = xin;
+
+#if DEBUGMODE
+    Proc_err(DEF_ERR_OPT, "upwidth = %f\n1st point = %f\nupl = %f",
+	     *upwidth, maxl*(val1*exp(-1.0/val2)+val3*exp(-1.0/val4)), *upl);
+#endif
+
+    /* right side, width at upval */
+    xin = fit2exp(val5, val6, val7, val8, upval, maxr, noofpoi, "upper right");
+    if ((xin == 1.0) || (xin > noofpoi))
+	ABORT;
+    *upwidth += hzppt*xin;
+    *upr = xin;
+
+#if DEBUGMODE
+    Proc_err(DEF_ERR_OPT, "upwidth = %f\n1st point = %f\nupr = %f",
+	     *upwidth, maxl*(val5*exp(-1.0/val6)+val7*exp(-1.0/val8)), *upr);
+#endif
+
+    *lowl = offset*sf-((double)(startl-disleft)-(*lowl)+0.5)*hzppt;
+    *lowr = offset*sf-((double)(startr+disright)+(*lowr)-0.5)*hzppt;
+    *upl  = offset*sf-((double)(startl-disleft)-(*upl)+0.5)*hzppt;
+    *upr  = offset*sf-((double)(startr+disright)+(*upr)-0.5)*hzppt;
+
+    return 0;
+}

@@ -1,0 +1,204 @@
+;zgesgp
+;avance-version (10/02/12)
+;1D sequence
+;water suppression using excitation sculpting with gradients
+;T.-L. Hwang & A.J. Shaka, J. Magn. Reson.,
+;   Series A 112 275-279 (1995)
+;
+;$CLASS=HighRes
+;$DIM=1D
+;$TYPE=
+;$SUBTYPE=
+;$COMMENT=
+
+
+prosol relations=<triple>
+
+
+#include <Avance.incl>
+#include <Grad.incl>
+#include <Delay.incl>
+
+
+"p2=p1*2"
+"d12=20u"
+
+
+"TAU=de+p1*2/3.1416+50u"
+
+
+"acqt0=0"
+baseopt_echo
+
+define delay polPar_L1_FL
+"polPar_L1_FL= abs(cnst27)"
+define delay polPar_H1_P3
+"polPar_H1_P3= abs(cnst28)"
+define delay polPar_H1_P4
+"polPar_H1_P4= abs(cnst29)"
+define delay polPar_go
+"polPar_go= abs(cnst30)"
+define delay polPar_H1_GA
+"polPar_H1_GA= abs(cnst31)"
+define delay polPar_H1_TO
+"polPar_H1_TO= abs(cnst32)"
+define delay polPar_T1_P2
+"polPar_T1_P2= abs(cnst33)"
+define delay polPar_T1_P1
+"polPar_T1_P1= abs(cnst34)"
+define delay polPar_T1_TO
+"polPar_T1_TO= abs(cnst35)"
+define delay polPar_T2_P2
+"polPar_T2_P2= abs(cnst36)"
+define delay polPar_T2_P1
+"polPar_T2_P1= abs(cnst37)"
+define delay polPar_T2_TO
+"polPar_T2_TO= abs(cnst38)"
+define delay polPar_T3_P2
+"polPar_T3_P2= abs(cnst39)"
+define delay polPar_T3_P1
+"polPar_T3_P1= abs(cnst40)"
+define delay polPar_T3_TO
+"polPar_T3_TO= abs(cnst41)"
+define delay polPar_T5_GA
+"polPar_T5_GA= abs(cnst42)"
+define delay polPar_R2_TO
+"polPar_R2_TO= abs(cnst43)"
+define delay polPar_R3_P1
+"polPar_R3_P1= abs(cnst44)"
+define delay polPar_R3_TO
+"polPar_R3_TO= abs(cnst45)"
+define delay polPar_MP
+"polPar_MP= abs(cnst46)"
+define delay polPar_mp_
+"polPar_mp_= abs(cnst47)"
+define delay DpreH2
+"DpreH2 = d40"
+define delay DH2
+"DH2 = d41"
+define delay DpreTrans
+"DpreTrans = d42"
+define delay DpreAcq
+"DpreAcq = d43"
+define delay DpreReturn
+"DpreReturn = d44"
+
+
+#   ifdef POL
+#	define POLNR
+#   else
+#   endif 
+
+#	ifdef POLNR
+#include <Polariser.incl>
+d40
+subr POLARISE(d41, d42, d43)
+#   else
+#   endif 
+
+
+
+1 ze
+2 30m
+  d12 pl1:f1 BLKGRAD
+  d1
+  p1 ph1
+  
+  50u UNBLKGRAD
+  p16:gp1
+  d16 pl0:f1
+  (p12:sp1 ph2:r):f1
+  4u
+  d12 pl1:f1
+
+  p2 ph3
+
+  4u
+  p16:gp1
+  d16 
+  TAU
+  p16:gp2
+  d16 pl0:f1
+  (p12:sp1 ph4:r):f1
+  4u
+  d12 pl1:f1
+
+  p2 ph5
+
+  4u
+  p16:gp2
+  d16
+
+  go=2 ph31
+  30m mc #0 to 2 F0(zd)
+  4u BLKGRAD
+
+#   ifdef POL  
+subr EJECT_PROBE() 				; transfer sample from probe to polariser.
+d44								; delay after returning sample from NMR probe to polarizer
+#   else
+#   endif 
+
+exit
+
+
+ph1=0
+ph2=0 1
+ph3=2 3
+ph4=0 0 1 1
+ph5=2 2 3 3
+ph31=0 2 2 0 
+
+
+;pl0 : 0W
+;pl1 : f1 channel - power level for pulse (default)
+;sp1 : f1 channel - shaped pulse 180 degree
+;p1 : f1 channel -  90 degree high power pulse
+;p2 : f1 channel - 180 degree high power pulse
+;p12: f1 channel - 180 degree shaped pulse (Squa100.1000)   [2 msec]
+;p16: homospoil/gradient pulse
+;d1 : relaxation delay; 1-5 * T1
+;d12: delay for power switching                             [20 usec]
+;d16: delay for homospoil/gradient recovery
+;NS: 8 * n, total number of scans: NS * TD0
+;DS: 4
+
+
+;use gradient ratio:    gp 1 : gp 2
+;                         31 :   11
+
+;for z-only gradients:
+;gpz1: 31%
+;gpz2: 11%
+
+;use gradient files:
+;gpnam1: SMSQ10.100
+;gpnam2: SMSQ10.100
+;d40: delay before bubbling of parahydrogen
+;d41: duration of the bubbling of parahydrogen 
+;d42: delay before sample transfer from polarizer to NMR probe
+;d43: delay before acquisition (d1 in the pulse sequence)
+;d44: delay after returning sample from NMR probe to polarizer
+;cnst27: <#L1:FL> Volume of sample to load, in uL 
+;cnst28: <#H1:P3> Regenerate input pressure 
+;cnst29: <#H1:P4> Regenerate back pressure 
+;cnst30: <go>     Magnetic field offset, stray field of the NMR magnet
+;cnst31: <#H1:GA> Regenerate Field 
+;cnst32: <#H1:TO> Timeout while back pressure building up
+;cnst33: <#T1:P2> Transfer Phase 1, transfer pressure
+;cnst34: <#T1:P1> Transfer Phase 1, back pressure
+;cnst35: <#T1:TO> Transfer Phase 1, timeout
+;cnst36: <#T2:P2> Transfer Phase 2, transfer pressure
+;cnst37: <#T2:P1> Transfer Phase 2, back pressure
+;cnst38: <#T2:TO> Transfer Phase 2, timeout
+;cnst39: <#T3:P2> Transfer Phase 3, transfer pressure
+;cnst40: <#T3:P1> Transfer Phase 3, back pressure
+;cnst41: <#T3:TO> Transfer Phase 3, timeout
+;cnst42: <#T5:GA> Field at the end of transfer
+;cnst43: <#R2:TO> Return timeout with high pressure (from T3:P1)
+;cnst44: <#R3:P1> Return back pressure
+;cnst45: <#R3:TO> Return timeout
+;cnst46: <MP>     Maximum pressure difference for VR3 and VR4 during regeneration
+;cnst47: <mp>     Minimum pressure difference for VR3 and VR4 during regeneration
+
+;$Id: zgesgp,v 1.7.2.1 2010/02/12 15:14:19 ber Exp $

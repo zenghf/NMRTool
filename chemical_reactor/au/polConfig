@@ -1,0 +1,63 @@
+/*** ^^A -*-C++-*- **********************************************/
+/*	polConfig						*/
+/****************************************************************/
+/*   Short Description :					*/
+/*   This program writes the configuration file for the		*/
+/*   polarizer.This function needs to be called once after	*/
+/*   installation of the polarizer				*/
+/****************************************************************/
+/*	Author(s) :						*/
+/*	Name		: Henriette Brzozowski			*/
+/*	Organisation	: Bruker BioSpin GmbH			*/
+/*	Email		: henriette.brzozowski@Bruker-Biospin.de*/
+/****************************************************************/
+/*
+$Id: polConfig,v 1.1 2011/11/28 14:18:22 hb Exp $
+*/
+
+freopen("/dev/tty","a" ,stdout);
+
+AUERR = testpol(curdat, cmd);
+QUIT
+
+#include <inc/polariseUtil.vs3>
+
+/* Function to configure the BPHP */
+int  configBPHP(TTY_DEVICE *bphp)
+{
+    char bphp_name[128];
+    char bphp_port[128];
+    char stty_strg[128];
+    char debugmessage[128];
+    strcpy( bphp_name, "BPHP" );
+ 
+    /*strcpy( stty_strg, "9600 min 1 time 50 cs8 hupcl cread clocal icrnl"); */
+    strcpy( stty_strg, "9600 cs8 hupcl cread clocal icanon icrnl onlcr opost");
+
+    /*strcpy( stty_strg, "9600 min 1 time 50 cs8 hupcl cread clocal" ); timeout <device off or not connected> */
+    strcpy( bphp_port, BPHP_DEFAULT_PORT );		/* default value */
+    GETSTRING("Enter COM port for BPHP: ", bphp_port );
+
+    (void) sprintf( debugmessage, "Configuring %s on %s\n", bphp_name, bphp_port);
+    if (DEBUG==1) printf( debugmessage );
+
+    if (-1 == tty_config(bphp, bphp_name, bphp_port, stty_strg, FALSE, NULL ))
+    { 
+	bphpError( "Cannot configure COM port for BPHP");
+	return -1;
+    }
+    (void) sprintf( debugmessage, "Use %s\n",tty_name(bphp));
+    if (DEBUG==1) printf( debugmessage );
+
+    return 0;
+}
+
+int testpol(const char* curdat, const char* cmd)
+{
+    TTY_DEVICE bphp;
+
+    initbphp(&bphp);
+    configBPHP(&bphp);
+    return 0;
+}
+

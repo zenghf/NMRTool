@@ -1,0 +1,85 @@
+$$$Constant$$$
+define delay polPar_H1_P4
+"polPar_H1_P4= abs(cnst29)"
+define delay polPar_go
+"polPar_go= abs(cnst30)"
+define delay polPar_H1_GA
+"polPar_H1_GA= abs(cnst31)"
+define delay polPar_H1_TO
+"polPar_H1_TO= abs(cnst32)"
+define delay polPar_T1_P2
+"polPar_T1_P2= abs(cnst33)"
+define delay polPar_T1_P1
+"polPar_T1_P1= abs(cnst34)"
+define delay polPar_T1_TO
+"polPar_T1_TO= abs(cnst35)"
+define delay polPar_T2_P2
+"polPar_T2_P2= abs(cnst36)"
+define delay polPar_T2_P1
+"polPar_T2_P1= abs(cnst37)"
+define delay polPar_T2_TO
+"polPar_T2_TO= abs(cnst38)"
+define delay polPar_T3_P2
+"polPar_T3_P2= abs(cnst39)"
+define delay polPar_T3_P1
+"polPar_T3_P1= abs(cnst40)"
+define delay polPar_T3_TO
+"polPar_T3_TO= abs(cnst41)"
+define delay polPar_T5_GA
+"polPar_T5_GA= abs(cnst42)"
+define delay polPar_R2_TO
+"polPar_R2_TO= abs(cnst43)"
+define delay polPar_R3_P1
+"polPar_R3_P1= abs(cnst44)"
+define delay polPar_R3_TO
+"polPar_R3_TO= abs(cnst45)"
+define delay polPar_MP
+"polPar_MP= abs(cnst46)"
+define delay polPar_mp
+"polPar_mp= abs(cnst47)"
+
+$$$Before Ze$$$
+#   ifdef POL
+#	define POLNR
+#   else
+#   endif 
+
+#	ifdef POLNR
+#include <Polariser.incl>
+d40
+subr POLARISE(d41, d42, d43)
+#   else
+#   endif 
+
+$$$Before exit$$$
+#   ifdef POL  
+subr EJECT_PROBE() 				; transfer sample from probe to polariser.
+d44								; delay after returning sample from NMR probe to polarizer
+#   else
+#   endif 
+
+$$$At the End$$$
+;d40: delay before bubbling of parahydrogen
+;d41: duration of the bubbling of parahydrogen 
+;d42: delay before sample transfer from polarizer to NMR probe
+;d43: delay before acquisition (d1 in the pulse sequence)
+;d44: delay after returning sample from NMR probe to polarizer
+;cnst29: <#H1:P4> Regenerate back pressure 
+;cnst30: <go>     Magnetic field offset, stray field of the NMR magnet
+;cnst31: <#H1:GA> Regenerate Field 
+;cnst32: <#H1:TO> Timeout while back pressure building up
+;cnst33: <#T1:P2> Transfer Phase 1, transfer pressure
+;cnst34: <#T1:P1> Transfer Phase 1, back pressure
+;cnst35: <#T1:TO> Transfer Phase 1, timeout
+;cnst36: <#T2:P2> Transfer Phase 2, transfer pressure
+;cnst37: <#T2:P1> Transfer Phase 2, back pressure
+;cnst38: <#T2:TO> Transfer Phase 2, timeout
+;cnst39: <#T3:P2> Transfer Phase 3, transfer pressure
+;cnst40: <#T3:P1> Transfer Phase 3, back pressure
+;cnst41: <#T3:TO> Transfer Phase 3, timeout
+;cnst42: <#T5:GA> Field at the end of transfer
+;cnst43: <#R2:TO> Return timeout with high pressure (from T3:P1)
+;cnst44: <#R3:P1> Return back pressure
+;cnst45: <#R3:TO> Return timeout
+;cnst46: <MP>     Maximum pressure difference for VR3 and VR4 during regeneration
+;cnst47: <mp>     Minimum pressure difference for VR3 and VR4 during regeneration

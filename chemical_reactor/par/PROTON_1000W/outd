@@ -1,0 +1,16 @@
+##TITLE= Parameter file, TOPSPIN		Version 3.0
+##JCAMPDX= 5.0
+##DATATYPE= Parameter Values
+##NPOINTS= 1	$$ modification sequence number
+##ORIGIN= Bruker BioSpin GmbH
+##OWNER= nmrsu
+$$ 2012-04-27 11:27:17.287 -0400  nmrsu@MRI750
+$$ /opt/topspin3.0/exp/stan/nmr/par/user/PROTON_1000W/outd
+$$ process /opt/topspin3.0/prog/mod/edparproc
+##$CURPLOT= <no printer>
+##$CURPRIN= <$no printer>
+##$DFORMAT= <normdp>
+##$LAYOUT= <+/1D_H.xwp>
+##$LFORMAT= <normlp>
+##$PFORMAT= <normpl>
+##END=

@@ -1,0 +1,110 @@
+;selmlgp
+;avance-version (10/12/07)
+;1D homonuclear Hartman-Hahn transfer using
+;   MLEV17 sequence for mixing
+;   using selective refocussing with a shaped pulse
+;
+;H. Kessler, H. Oschkinat, C. Griesinger & W. Bermel,
+;   J. Magn. Reson. 70, 106 (1986)
+;J. Stonehouse, P. Adell, J. Keeler & A.J. Shaka, J. Am. Chem. Soc 116,
+;   6037 (1994)
+;K. Stott, J. Stonehouse, J. Keeler, T.L. Hwang & A.J. Shaka,
+;   J. Am. Chem. Soc 117, 4199-4200 (1995)
+;A. Bax & D.G. Davis, J. Magn. Reson. 65, 355-360 (1985)
+;
+;$CLASS=HighRes
+;$DIM=1D
+;$TYPE=
+;$SUBTYPE=
+;$COMMENT=
+
+
+#include <Avance.incl>
+#include <Grad.incl>
+#include <Delay.incl>
+
+
+"p5=p6*.667"
+"p7=p6*2"
+
+
+"SCALEF=p7*2/p5"
+"FACTOR1=((d9-p17*2)/(p6*64+p5))/SCALEF"
+"l1=FACTOR1*SCALEF"
+
+
+#   ifdef CALC_SPOFFS
+"spoff2=bf1*(cnst21/1000000)-o1"
+#   else
+#   endif /*CALC_SPOFFS*/
+
+
+1 ze
+2 30m
+  20u pl1:f1 BLKGRAD
+  d1
+  50u UNBLKGRAD
+  (p1 ph1):f1
+  3u
+  p16:gp1
+  d16 pl0:f1
+  p12:sp2:f1 ph2:r
+  3u
+  p16:gp1
+  d16 pl10:f1
+
+  go=2 ph31
+  30m mc #0 to 2 F0(zd)
+  20u BLKGRAD
+exit
+
+
+ph1=0 2 
+ph2=0 0 1 1 2 2 3 3
+ph22=0
+ph23=1
+ph24=2
+ph25=3
+ph26=1
+ph31=0 2 2 0 
+
+
+;pl0 : 0W
+;pl1 : f1 channel - power level for pulse (default)
+;pl10: f1 channel - power level for TOCSY-spinlock
+;sp2: f1 channel - shaped pulse
+;p1 : f1 channel -  90 degree high power pulse
+;p5 : f1 channel -  60 degree low power pulse
+;p6 : f1 channel -  90 degree low power pulse
+;p7 : f1 channel - 180 degree low power pulse
+;p12: f1 channel - 180 degree shaped pulse
+;p16: homospoil/gradient pulse                            [1 msec]
+;p17: f1 channel - trim pulse                             [2.5 msec]
+;d1 : relaxation delay; 1-5 * T1
+;d9 : TOCSY mixing time
+;d16: delay for homospoil/gradient recovery
+;cnst21: chemical shift for selective pulse (offset, in ppm)
+;l1: loop for MLEV cycle: (((p6*64) + p5) * l1) + (p17*2) = mixing time
+;NS: 2 * n, total number of scans: NS * TD0
+;DS: 4
+
+
+;phcor 2 : phasedifference between power levels sp1 and pl1
+
+;choose p12 according to desired selectivity
+;the flip-angle is determined by the amplitude
+;set O1 on resonance on the multiplet to be excited or use spoffs
+
+
+;use gradient ratio:    gp 1
+;                         15
+
+;for z-only gradients:
+;gpz1: 15%
+
+;use gradient files:   
+;gpnam1: SMSQ10.100
+
+
+
+;$Id: selmlgp,v 1.14.2.3 2011/01/11 10:57:36 ber Exp $

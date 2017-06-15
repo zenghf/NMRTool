@@ -1,0 +1,16 @@
+##TITLE= Parameter file, TOPSPIN		Version 3.0
+##JCAMPDX= 5.0
+##DATATYPE= Parameter Values
+##NPOINTS= 2	$$ modification sequence number
+##ORIGIN= Bruker BioSpin GmbH
+##OWNER= nmrsu
+$$ 2013-03-09 11:26:40.226 -0500  hzeng@MRI750
+$$ /opt/topspin3.0/exp/stan/nmr/par/user/hzp_ethanol/outd
+$$ process /opt/topspin3.0/prog/mod/edparproc
+##$CURPLOT= <no printer>
+##$CURPRIN= <$no printer>
+##$DFORMAT= <normdp>
+##$LAYOUT= <+/1D_H.xwp>
+##$LFORMAT= <normlp>
+##$PFORMAT= <normpl>
+##END=

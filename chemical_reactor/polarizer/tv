@@ -1,0 +1,13 @@
+#T1:P2=3.2  Transfer Phase 1, transfer pressure
+#T1:P1=2.6  Transfer Phase 1, back pressure
+#T1:TO=0.65  Transfer Phase 1, timeout
+#T2:P2=3.0  Transfer Phase 2, transfer pressure
+#T2:P1=3.22  Transfer Phase 2, back pressure
+#T2:TO=1.5  Transfer Phase 2, timeout
+#T3:P2=3.0  Transfer Phase 3, transfer pressure
+#T3:P1=3.00 Transfer Phase 3, back pressure
+#T3:TO=0.9  Transfer Phase 3, timeout
+#T5:GA=0    Field at end of transfer
+#R2:TO=0.4  Return timeout with high pressure (from T3:P1)
+#R3:P1=0.25 Return back pressure
+#R3:TO=15.0 Return timeout

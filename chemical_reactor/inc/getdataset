@@ -1,0 +1,54 @@
+/*-*-C++-*-******************************************************
+ *
+ * $Source: /sc/CvsTree/sc/gen/src/prg/makeau/inc/getdataset,v $
+ *
+ * Copyright (c) 2003
+ * BRUKER BIOSPIN GMBH
+ * D-76287 Rheinstetten, Germany
+ *
+ * All Rights Reserved
+ *
+ * $Id: getdataset,v 1.8 2008/01/21 09:43:41 wem Exp $
+ *
+ *****************************************************************
+*/
+ 
+
+{
+  char  *iptr, gstring[PATH_MAX];
+
+  GETCURDATA
+  do
+  {
+    strcpy(gstring, name);
+    iptr = Gets("Enter NAME   :",gstring);
+    if (iptr == 0  ||  *iptr == 0)
+      Exit_unimar(NORM_TERM);
+    strcpy(name, iptr);
+
+    (void) sprintf(gstring,"%d",expno);
+    iptr = Gets("Enter EXPNO  :",gstring);
+    if (iptr == 0  ||  *iptr == 0)
+      Exit_unimar(NORM_TERM);
+    expno = atoi(iptr);
+
+    (void) sprintf(gstring,"%d",procno);
+    iptr = Gets("Enter PROCNO :",gstring);
+    if (iptr == 0  ||  *iptr == 0)
+      Exit_unimar(NORM_TERM);
+    procno = atoi(iptr);
+
+    strcpy(gstring, disk);
+    iptr = Gets("Enter disk   :",gstring);
+    if (iptr == 0  ||  *iptr == 0)
+      Exit_unimar(NORM_TERM);
+    strcpy(disk, iptr);
+
+    iptr = Gets("Repeat dialog (r) or continue (c) :","c");
+    if (iptr == 0)
+      Exit_unimar(NORM_TERM);
+  }
+  while (*iptr == 'r');
+
+  SETCURDATA
+}

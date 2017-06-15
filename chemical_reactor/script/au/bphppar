@@ -1,0 +1,62 @@
+typedef struct
+{
+    char key[5];
+    char name[100];
+    float min_v;
+    float max_v;
+} polParValidStruct;
+
+typedef struct
+{
+    char cmndName[50];
+    char topSpinVarName[50];
+    int cmndType;
+    int cmndValType;
+    char comments[100];
+} topSpin2PolStruct;
+
+/* cmndType */
+/*      BPHP reference page 62 */
+/*      1. Commands which ‘do’ something immediately and can be sent at any time. For example: “ga65.7” sets the coil field strength to 65.7 gauss. */
+/*      2. Commands  which  configure  some  general  condition  in  the  polariser. For example “md2” enables the serial mode control. */
+/*      3. Commands  which  start  one  of  the  polariser  transfer  related  operations.  For example “IPmt” starts the empty polariser process. */
+/*      4. Commands which configure the state machines for transfer related operations. For example “#L1:FL=2700” sets the load volume to 2700µL */
+/*      5. Queries: All queries have the ‘?’ character somewhere in the command string. For example “AV?” queries the application firmware level. */
+/*                                                                                                                                           */
+/* cmndValType */
+/*      0. no value; 1. int; 2. float; 3. binary */
+
+topSpin2PolStruct topSpin2PolArray[]={
+    {"#H1:P4" , "CNST 29" , 4 , 2 , "Regenerate back pressure "},
+    {"go" , "CNST 30" , 1 , 2 , "Magnetic field offset, stray field of the NMR magnet"},
+    {"#H1:GA" , "CNST 31" , 4 , 2 , "Regenerate Field "},
+    {"#H1:TO" , "CNST 32" , 4 , 2 , "Timeout while back pressure building up"},
+    {"#T1:P2" , "CNST 33" , 4 , 2 , "Transfer Phase 1, transfer pressure"},
+    {"#T1:P1" , "CNST 34" , 4 , 2 , "Transfer Phase 1, back pressure"},
+    {"#T1:TO" , "CNST 35" , 4 , 2 , "Transfer Phase 1, timeout"},
+    {"#T2:P2" , "CNST 36" , 4 , 2 , "Transfer Phase 2, transfer pressure"},
+    {"#T2:P1" , "CNST 37" , 4 , 2 , "Transfer Phase 2, back pressure"},
+    {"#T2:TO" , "CNST 38" , 4 , 2 , "Transfer Phase 2, timeout"},
+    {"#T3:P2" , "CNST 39" , 4 , 2 , "Transfer Phase 3, transfer pressure"},
+    {"#T3:P1" , "CNST 40" , 4 , 2 , "Transfer Phase 3, back pressure"},
+    {"#T3:TO" , "CNST 41" , 4 , 2 , "Transfer Phase 3, timeout"},
+    {"#T5:GA" , "CNST 42" , 4 , 2 , "Field at the end of transfer"},
+    {"#R2:TO" , "CNST 43" , 4 , 2 , "Return timeout with high pressure (from T3:P1)"},
+    {"#R3:P1" , "CNST 44" , 4 , 2 , "Return back pressure"},
+    {"#R3:TO" , "CNST 45" , 4 , 2 , "Return timeout"},
+    {"MP" , "CNST 46" , 2 , 2 , "Maximum pressure difference for VR3 and VR4 during regeneration"},
+    {"mp" , "CNST 47" , 2 , 2 , "Minimum pressure difference for VR3 and VR4 during regeneration"}
+};
+
+polParValidStruct polParValidArray[] = {
+    {"go",  "Polarizer Field",                                                      -148.0, 148.0},
+    {"ga",  "Polarizer Field",                                                      -148.0, 148.0},
+    {"GA",  "Polarizer Field",                                                      -148.0, 148.0},
+    {"MP",  "maximum pressure difference for VR3 and VR4 during regeneration",      0.0,    4.0},
+    {"mp",  "manimum pressure difference for VR3 and VR4 during regeneration",      0.0,    2.0},
+    {"md",  "mode",                                                                 0.0,    3.0},
+    {"P1",  "Regulator VR1 at P1",                                                  0.0,    4.095},
+    {"P2",  "Regulator VR2 at P2",                                                  0.0,    4.095},
+    {"P3",  "Regulator VR3 at P3",                                                  0.0,    5.0},
+    {"P4",  "Regulator VR4 at P4",                                                  0.0,    5.0}
+};

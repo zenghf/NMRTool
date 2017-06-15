@@ -1,0 +1,5 @@
+find /opt/topspin3.0/data/hzeng/nmr/130319_pyrazinamide_methanold4 | grep title > tmp
+./titletable2.py
+rm ./tmp
+cp a.html /opt/topspin3.0/data/hzeng/nmr/tmp/title.html
+rm ./a.html

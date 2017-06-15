@@ -1,0 +1,8 @@
+# TOPSPIN ts_3_0 TTY configuration file
+# created automatically by 'cf'
+# do not edit, changes are lost after next 'cf'
+unit   = AQS2M-1
+host   = 149.236.99.87
+device = /dev/tty10
+type   = RS485
+stty   = 9600 min 1 time 50 cs8 hupcl cread clocal

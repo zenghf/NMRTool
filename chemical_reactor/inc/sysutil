@@ -1,0 +1,765 @@
+/*-*-C++-*-*********************************************************
+*
+* $Source: /sc/CvsTree/sc/gen/src/prg/makeau/inc/sysutil,v $
+*
+* Copyright (c) 1995
+* BRUKER BIOSPIN GMBH
+* D-76287 Rheinstetten, Germany
+*
+* All Rights Reserved
+*
+*
+* $Id: sysutil,v 1.47 2009/06/09 09:50:04 wem Exp $
+*
+********************************************************************
+*/
+/*Modifications:
+ *
+ *	readPeakList		20071217 GE
+ */
+/****************************************************************/
+/*	genprotpath		09.06.1997 ENG			*/
+/****************************************************************/
+/*	Returns the pathname of the protocol file for the	*/
+/*	ntp session.						*/
+/****************************************************************/
+
+void genprotpath(char* protfilepath, const char* testtype)
+{
+  char match[PATH_MAX];		/* base of protocol filename */
+  char todaydate[16];
+  char **listprotfile;	     /* list of existing prot. files */
+  int nr;
+  int highest = 0;
+  time_t seconds = time(0);
+
+  todaydate[0] = 0;
+  strftime(todaydate, sizeof(todaydate), "%Y%m%d", localtime(&seconds));
+  sprintf(match, "%s.%s*", testtype, todaydate);
+  nr = getdir(PathSystemHome(), &listprotfile, match);
+
+  if (nr > 0)
+  {
+    int iii;
+
+    for (iii = 0; iii < nr; iii++)
+    {
+      const char* chrptr = strrchr(listprotfile[iii], '.');
+
+      if (chrptr++)
+      {
+	int ret = atoi(chrptr);
+
+	if (ret > highest)
+	  highest = ret;
+      }
+    }
+
+    freedir(listprotfile);
+  }
+
+  sprintf(protfilepath, "%s/%s.%s.%d",
+	  PathSystemHome(), testtype, todaydate, highest+1);
+}
+
+/****************************************************************/
+/*	timed_start_message	6.6.1997 ENG			*/
+/****************************************************************/
+
+void timed_start_message (FILE* protfile, const char* commandsend)
+{
+  char tbuf[32];
+  time_t seconds = time(0);
+
+  tbuf[0] = 0;
+  strftime(tbuf, sizeof(tbuf), "%Y-%m-%d %H:%M:%S", localtime(&seconds));
+  fprintf(protfile, "'%s' started on %s\n", commandsend, tbuf);
+}
+
+/****************************************************************/
+/*	timed_end_message	6.6.1997 ENG			*/
+/****************************************************************/
+
+void timed_end_message (FILE* protfile, const char* commandsend, int auerror)
+{
+  char tbuf[32];
+  time_t seconds = time(0);
+
+  tbuf[0] = 0;
+  strftime(tbuf, sizeof(tbuf), "%Y-%m-%d %H:%M:%S", localtime(&seconds));
+  fprintf(protfile, "'%s' returns %d on %s\n", commandsend, auerror, tbuf);
+  fflush(protfile);
+}
+
+/****************************************************************/
+/*	pow_next		3.7.1997 ENG/WEM		*/
+/****************************************************************/
+/*	Round number to next larger power of 2.			*/
+/****************************************************************/
+
+int pow_next(int num)
+{
+  register int ret = 1;
+  while (ret < num) ret<<=1;
+  return ret;
+}
+
+/****************************************************************/
+/*	gethighest		6.6.1997 ENG			*/
+/****************************************************************/
+/*	Returns the highest experiment number of the data set.	*/
+/****************************************************************/
+
+int gethighest(const char* pathname)
+{
+  char **listofexpnos=0;/* pointer to list of EXPNOS for getdir() */
+  int highexp=0;	/* return next available EXPNO */
+  int nr = getdir(pathname,&listofexpnos,"[1-9]*");
+
+  while (nr > 0)
+  {
+    int ret = atoi(listofexpnos[--nr]);
+
+    if (ret > highexp)
+      highexp = ret;
+  }
+
+  if (listofexpnos)
+    freedir(listofexpnos);
+  return ++highexp;
+}
+
+/****************************************************************/
+/*	getordernumber		25.5.2001 ENG			*/
+/****************************************************************/
+/*	Returns the order number of the system			*/
+/****************************************************************/
+
+void getordernumber(char* ordernumber)
+{
+  char ftalibpath[PATH_MAX],ftalibfile[PATH_MAX];
+  char line1[PATH_MAX];
+  char *orderpointer;
+  char *systempointer;
+  FILE *fpp;
+
+  sprintf(ftalibpath,"%s/tcl/libtix/ftalib",PathXWinNMRProg());
+  sprintf(ftalibfile,"%s/deliver_accept.fta",ftalibpath);
+
+  if ((fpp = fopen (ftalibfile,"r")) == NULL)
+  {
+    sprintf(ftalibfile,"%s/deliver_final.fta",ftalibpath);
+    if ((fpp = fopen (ftalibfile,"r")) == NULL)
+    {
+      strcpy(ordernumber,"unknown");
+      return;
+    }
+  }
+  fgets(line1,sizeof(line1),fpp);
+  fclose(fpp);
+  orderpointer = strchr(line1,';');
+  orderpointer++;
+  systempointer = strchr(orderpointer++,';');
+  *systempointer++ = 0;
+  strcpy(ordernumber,line1);
+}
+
+/****************************************************************/
+/*	linkwv			20.10.1996 ENG			*/
+/****************************************************************/
+/*	This function links a shape file from the wave.hwt	*/
+/*	directory to the 'normal' <stan>/lists/wave directory.	*/
+/*	The shape file is deleted from there before the		*/
+/*	HWT AU program, which needed it, finishes.		*/
+/****************************************************************/
+int linkwv (const char* nameofwv)
+{
+  char sourcepp[PATH_MAX],targetpp[PATH_MAX];
+  int ret;
+
+  sprintf(targetpp,"%s/nmr/lists/wave/%s",PathXWinNMRExpStan(),nameofwv);
+
+  if (access(targetpp,F_OK) == 0)
+    remove(targetpp);	      /* No error, if this doesn't work */
+
+  sprintf(sourcepp,"%s/nmr/lists/wave.hwt/%s",PathXWinNMRExpStan(),nameofwv);
+  ret = dircp(sourcepp,targetpp);
+  if (ret < 0)
+  {
+    Proc_err (INFO_OPT,"Could not copy :\n%s to :\n%s\n%s\n"
+	      "AU program will continue with original shape",
+	      sourcepp, targetpp, dircp_err(ret));
+    return -1;
+  }
+
+  return 0;
+}
+
+/****************************************************************/
+/*	unlinkwv		20.10.1996 ENG			*/
+/****************************************************************/
+/*	This function unlinks a shape file, which was used	*/
+/*	by a tstsrc HWT AU program, from the <stan>/lists/wave	*/
+/*	directory.						*/
+/****************************************************************/
+
+void unlinkwv(const char* nameofwv)
+{
+  char targetpp[PATH_MAX];
+
+  sprintf(targetpp,"%s/nmr/lists/wave/%s",PathXWinNMRExpStan(),nameofwv);
+  remove(targetpp);		      /* No error, if this doesn't work */
+}
+
+/****************************************************************/
+/*	unlinkpr		21.02.1997 ENG			*/
+/****************************************************************/
+/*	This function unlinks the processed data files which	*/
+/*	occupy to much disk space.				*/
+/****************************************************************/
+
+void unlinkpr(const char* basename)
+{
+  char pathname[PATH_MAX];
+
+  sprintf(pathname,"%s/1r",basename);
+  remove(pathname); /* No error, if this doesn't work */
+  sprintf(pathname,"%s/1i",basename);
+  remove(pathname); /* No error, if this doesn't work */
+  sprintf(pathname,"%s/2rr",basename);
+  remove(pathname); /* No error, if this doesn't work */
+  sprintf(pathname,"%s/2ri",basename);
+  remove(pathname); /* No error, if this doesn't work */
+  sprintf(pathname,"%s/2ir",basename);
+  remove(pathname); /* No error, if this doesn't work */
+  sprintf(pathname,"%s/2ii",basename);
+  remove(pathname); /* No error, if this doesn't work */
+  sprintf(pathname,"%s/dsp.hdr",basename);
+  remove(pathname); /* No error, if this doesn't work */
+}
+
+/****************************************************************/
+/*	functot1d		20.09.1996 ENG			*/
+/****************************************************************/
+/*	This function calculates the total size of a data	*/
+/*	set obtained from a paropt/parray experiment.		*/
+/*	The total size of a data set is used, for instance,	*/
+/*	in the routine funcf2p().				*/
+/****************************************************************/
+
+int functot1d (const char* curdat, int ne)
+{
+  double sw;
+  double f1p, f2p;
+  int si;
+
+  FETCHPAR("SW",&sw)
+  FETCHPAR("SI",&si)
+  FETCHPAR("F1P",&f1p)
+  FETCHPAR("F2P",&f2p)
+  return (int)((si * (f1p - f2p) / sw + 1) * ne);
+}
+
+/****************************************************************/
+/*	functot2d		20.09.1996 ENG			*/
+/****************************************************************/
+/*	This function calculates the total size of a pseudo	*/
+/*	data set obtained from a paropt/parray experiment.	*/
+/*	The total size of a data set is used, for instance,	*/
+/*	in the routine funcf2p().				*/
+/****************************************************************/
+
+int functot2d (const char* curdat, int ne)
+{
+  double sw;
+  double f1p, f2p;
+  int si;
+
+  FETCHPAR("SW",&sw)
+  FETCHPAR("SI",&si)
+  FETCHPAR("F1P",&f1p)
+  FETCHPAR("F2P",&f2p)
+  return (int)((si * (f1p - f2p) / sw + 1) * ne);
+}
+
+/****************************************************************/
+/*	funcf2p		19.09.1996 ENG				*/
+/****************************************************************/
+/*	This function calculates F2P (frequency in ppm		*/
+/*	of the right end of the region to be plotted) of a	*/
+/*	data set created by a hardware test. These data sets	*/
+/*	are usually the result of a parray type acquisition.	*/
+/****************************************************************/
+
+void funcf2p(const char* curdat, int totsize)
+{
+  double sw, f2p;
+  float  off;
+  int si;
+
+  FETCHPAR("OFFSET",&off)
+  FETCHPARS("SW",&sw)
+  FETCHPARS("SI",&si)
+  f2p = off - (sw * totsize) / si;
+  STOREPARS("FT_MOD", 6);
+  STOREPARS("DATMOD",1);
+  STOREPAR("F1P",off);
+  STOREPAR("F2P",f2p);
+  STOREPAR("CY",100.);
+}
+
+/****************************************************************/
+/*	write_statistic		05.03.2001 ENG			*/
+/****************************************************************/
+/*	This function writes the result from a hardware test	*/
+/*	(HWT) to a file with the name of the hardware test.	*/
+/*	The file is located in:					*/
+/*	XWINNMRHOME/prog/logfiles				*/
+/*	Every time a test with exactly the same name is run,	*/
+/*	this same file is updated with a new entry. Different	*/
+/*	tests should therefore have different names !		*/
+/*	The file format is JCAMP for easy import in XWIN-PLOT	*/
+/*	and other programs like Excel.				*/
+/****************************************************************/
+
+int write_statistics(const char* titlepath, double val1, double val2, double val3)
+{
+  static const char npointstxt[] = "##NPOINTS=";
+  static const char endtxt[] = "##END";
+  char line[PATH_MAX], statpath[PATH_MAX], statpath2[PATH_MAX], tbuf[32];
+  char dummystr[PATH_MAX], exptitle[PATH_MAX], expname[PATH_MAX];
+  char *cp, *tok;
+  FILE *fpw, *fpr;
+  int  append;
+  int  i1 = 1;
+  time_t seconds = time(0);
+
+  if ((fpr = fopen(titlepath, "r")) == 0)
+  {
+    Proc_err(DEF_ERR_OPT, "Cannot open file for reading\n%s", titlepath);
+    return -1;
+  }
+
+  /* Skip first line of title */
+
+  fgets(line, sizeof(line), fpr);
+
+  /* Read second line of title and prepare output file */
+  /* from the name of the experiment in that line.     */
+
+  fgets(line, sizeof(line), fpr);
+  fclose(fpr);
+
+  if ((cp = strstr(line, " - ")) == 0)
+  {
+    Proc_err (DEF_ERR_OPT,"This is not a real HWT title file\n"
+			  "%s\nI can't use this title file for\n"
+			  "the statistical results report.",titlepath);
+    return -1;
+  }
+
+  /* Prepare output file name and read it if it exists */
+
+  strcpy(dummystr, cp+3);
+  strcpy(exptitle, dummystr);
+  tok = strtok(dummystr, " /\\<>|:\'#*\"$%&?\b\f\n\r\t\v");
+  strcpy(expname, tok);
+  while ((tok = strtok (NULL," /\\<>|:\'#*\"$%&?\b\f\n\r\t\v")) != 0)
+    strcat(expname, tok);
+
+  sprintf(statpath,  "%s/logfiles/%s.dx",  PathXWinNMRProg(), expname);
+  sprintf(statpath2, "%s/logfiles/%s.tmp", PathXWinNMRProg(), expname);
+
+  append = access(statpath, F_OK);
+
+  if ((fpw = fopen(append ? statpath : statpath2, "wt")) == 0)
+  {
+    Proc_err(DEF_ERR_OPT, "Cannot open file for writing\n%s",
+	     append ? statpath : statpath2);
+    return -1;
+  }
+
+  if (append == 0)
+  {
+    if ((fpr = fopen(statpath, "r")) == 0)
+    {
+      Proc_err(DEF_ERR_OPT, "Cannot open file for reading\n%s", statpath);
+      return -1;
+    }
+    while (fgets(line, sizeof(line), fpr))
+    {
+      if (strncmp(line, npointstxt, sizeof(npointstxt) - 1) == 0)
+      {
+	i1 = 1 + atoi(line + sizeof(npointstxt) - 1);
+	break;
+      }
+    }
+  }
+
+  cp = exptitle + strlen(exptitle);
+  do
+    *cp-- = 0;
+  while (cp >= exptitle  &&  isspace((int)*cp));
+
+  tbuf[0] = 0;
+  strftime(tbuf, sizeof(tbuf), "%Y-%m-%d %H:%M:%S", localtime(&seconds));
+  fprintf(fpw, "##TITLE= %s\n"
+		"##JCAMP-DX= 5.0\n"
+		"##DATA TYPE= Relaxation Data\n"
+		"##ORIGIN= Bruker BioSpin GmbH\n"
+		"##OWNER= <%s>\n"
+		"##$DATE= %s\n"
+		"##XUNITS= a.u.\n"
+		"##YUNITS= a.u.\n"
+		"##NPOINTS= %d\n",
+		exptitle, GetUser(), tbuf, i1);
+
+  if (append == 0)
+  {
+    while (fgets(line, sizeof(line), fpr))
+    {
+      if (strncmp(line, endtxt, sizeof(endtxt) - 1) == 0)
+	break;
+
+      cp = line + strlen(line);
+      do
+	*cp-- = 0;
+      while (cp >= line  &&  isspace((int)*cp));
+
+      fprintf(fpw, "%s\n", line);
+    }
+
+    fclose(fpr);
+  }
+
+  fprintf(fpw, "%5d", i1);
+  fprintf(fpw, "  %7.3f", val1);
+
+  if (val2 != -1.0)
+    fprintf(fpw, "  %7.3f", val2);
+
+  if (val3 != -1.0)
+    fprintf(fpw, "  %7.3f", val3);
+
+  fprintf(fpw, "  %s\n##END= $$ End of List\n", tbuf);
+  fclose(fpw);
+
+  if (append == 0)
+  {
+    remove(statpath);
+    rename(statpath2, statpath);
+  }
+
+  return 0;
+}
+
+/****************************************************************/
+/*	funcminmax	26.05.1998 ENG				*/
+/****************************************************************/
+/*	This function extracts the minimum and maximum value	*/
+/*	from the peak picking result on a data set created by	*/
+/*	a hardware test. These data sets are usually the result	*/
+/*	of a parray type acquisition. This function sets MI to	*/
+/*	for more useful report results.				*/
+/****************************************************************/
+
+int funcminmax (const char* curdat, const char* titlepath)
+{
+    double pint_max, pint_min;
+    int numPeaks, i;
+    FILE *fptr1;
+
+    STOREPAR("CY",100.0);
+    STOREPAR("PC",1.0);
+    STOREPAR("MI",50.0);
+
+    /** Do peak picking and write all peaks into the file pp-output. **/
+
+    PP;
+    ERRORABORT;
+
+    numPeaks = readPeakList(PROCPATH(0));
+    if (numPeaks <= 0)
+    {
+	Proc_err (DEF_ERR_OPT, "%s\n%s", PROCPATH(0), getPeakError());
+	return -1;
+    }
+
+    pint_max = pint_min = getPeakIntensity(0);
+
+    for (i = 1; i < numPeaks; i++)
+    {
+	double pint = getPeakIntensity(i);
+	if ( pint > pint_max )
+	    pint_max = pint;
+	if ( pint < pint_min )
+	    pint_min = pint;
+    }
+    freePeakList();
+
+/***** Report the results *****/
+
+    fptr1 = fopen(titlepath,"at");
+    if (fptr1)
+    {
+	fprintf(fptr1,"maximum: %7.3f%%; minimum: %7.3f%%\n",
+		pint_max, pint_min);
+	fclose(fptr1);
+    }
+
+    write_statistics(titlepath,pint_max,pint_min,-1.0);
+    return 0;
+}
+
+/****************************************************************/
+/*	funcstd		21.10.1996 ENG				*/
+/****************************************************************/
+/*	This function calculates the mean value and standard	*/
+/*	deviation of a data set created by a hardware test.	*/
+/*	These data sets are usually the result of a parray	*/
+/*	type acquisition. For this function, the expected	*/
+/*	height of the signals should be more or less the same.	*/
+/****************************************************************/
+
+int funcstd (const char* curdat, const char* titlepath)
+{
+    char line[120], dummystr[120], pppathasc[PATH_MAX];
+    FILE* fptr1;
+    double i0val, square = 0;
+    int i1, numPeaks;
+
+    STOREPAR("PC",1.0);
+    STOREPAR("MI",1.0);
+
+    /***** Do peak picking and write all peaks into the file	*****/
+    /***** t1ascii for fitting with the SIMFIT functions.	*****/
+
+    PP;
+    ERRORABORT;
+
+    numPeaks = readPeakList(PROCPATH(0));
+    if (numPeaks <= 0)
+    {
+	Proc_err (DEF_ERR_OPT, "%s\n%s", PROCPATH(0), getPeakError());
+	return -1;
+    }
+
+    strcpy(pppathasc, PROCPATH("t1ascii"));
+    if ((fptr1 = fopen(pppathasc, "wt")) == 0)
+    {
+	Proc_err(DEF_ERR_OPT, "Cannot open file for writing\n%s", pppathasc);
+	return -1;
+    }
+    fprintf(fptr1, "SIMFIT 1\n");
+    for (i1 = 0; i1 < numPeaks; i1++)
+	fprintf(fptr1, "%5d   %10.3f\n", i1 + 1, getPeakIntensity(i1));
+    fclose(fptr1);
+    freePeakList();
+
+    /***** Set some T1 fitting parameters *****/
+
+    STORET1PAR("NUMPNTS",numPeaks);
+    STORET1PAR("FITTYPE",0);
+    STORET1PAR("FCTTYPE",7);
+    STORET1PAR("COMPNO",1);
+    STORET1PAR("GUESSES 0",1.0);
+    STORET1PAR("GUESSES 1",1.0e-20);
+    STORET1PAR("GUESSES 12",0.1);
+    STORET1PAR("GUESSES 13",0.0);
+
+    STOREPAR("CURPRIN","ct1t2.txt");
+
+    /***** Fit ! *****/
+
+    CPR_exec("simfit asc",WAIT_TERM);
+
+    /***** Read fit parameter back after fitting *****/
+
+    dummystr[0] = 0;
+    strcpy(pppathasc, PROCPATH("ct1t2.txt"));
+    if ((fptr1 = fopen (pppathasc,"r")) == 0)
+    {
+	Proc_err(DEF_ERR_OPT, "Cannot open file for reading\n%s", pppathasc);
+	return -1;
+    }
+    while (fgets(line,sizeof(line),fptr1))
+    {
+	sscanf(line,"%s %*c %lf",dummystr,&square);
+	if (strcmp(dummystr,"SD") == 0)
+	    break;
+    }
+    fclose(fptr1);
+
+    /***** Report the results *****/
+
+    FETCHT1PAR("PARM 0",&i0val);
+    fptr1 = fopen(titlepath,"at");
+    if (fptr1)
+    {
+	fprintf(fptr1,"standard deviation: %7.3f%%; mean amplitude: %7.3f%%\n",
+		square*100,i0val*100);
+	fclose(fptr1);
+    }
+
+    write_statistics(titlepath,square*100.0,i0val*100.0,-1.0);
+    return 0;
+}
+
+/****************************************************************/
+/*	funclin		21.10.1996 ENG				*/
+/****************************************************************/
+/*	This function calculates the mean value and standard	*/
+/*	deviation of a data set created by a hardware test.	*/
+/*	These data sets are usually the result of a parray	*/
+/*	type acquisition. For this function, the expected	*/
+/*	height of the signals should follow a linear decay.	*/
+/****************************************************************/
+
+int funclin (const char* curdat, const char* titlepath,
+	     double xstart, double xincr,
+	     double guess1, double guess1inc)
+{
+    char line[120], dummystr[120], pppathasc[PATH_MAX];
+    FILE* fptr1;
+    double i0val, square = 0;
+    int i1;
+    int numPeaks = readPeakList(PROCPATH(0));
+
+    if (numPeaks <= 0)
+    {
+	Proc_err (DEF_ERR_OPT, "%s\n%s", PROCPATH(0), getPeakError());
+	return -1;
+    }
+
+    /***** Read peak picking result and write all peaks into the	*****/
+    /***** file t1ascii for fitting with the SIMFIT functions.	*****/
+
+    strcpy(pppathasc, PROCPATH("t1ascii"));
+    if ((fptr1 = fopen(pppathasc, "wt")) == 0)
+    {
+	Proc_err(DEF_ERR_OPT, "Cannot open file for writing\n%s", pppathasc);
+	return -1;
+    }
+    fprintf(fptr1, "SIMFIT 1\n");
+
+    for (i1 = 0; i1 < numPeaks; i1++, xstart += xincr)
+	fprintf(fptr1, "%10.3f   %10.3f\n", xstart, getPeakIntensity(i1));
+
+    fclose(fptr1);
+    freePeakList();
+
+    /***** Set some T1 fitting parameters *****/
+
+    STORET1PAR("NUMPNTS",numPeaks);
+    STORET1PAR("FITTYPE",0);
+    STORET1PAR("FCTTYPE",7);
+    STORET1PAR("COMPNO",1);
+    STORET1PAR("GUESSES 0",1.0);
+    STORET1PAR("GUESSES 1",guess1);
+    STORET1PAR("GUESSES 12",0.1);
+    STORET1PAR("GUESSES 13",guess1inc);
+    STOREPAR("CURPRIN","ct1t2.txt");
+
+    /***** Fit ! *****/
+
+    CPR_exec("simfit asc",WAIT_TERM);
+
+    /***** Read fit parameter back after fitting *****/
+
+    dummystr[0] = 0;
+    strcpy(pppathasc, PROCPATH("ct1t2.txt"));
+    if ((fptr1 = fopen(pppathasc,"r")) == 0)
+    {
+	Proc_err(DEF_ERR_OPT, "Cannot open file for reading\n%s", pppathasc);
+	return -1;
+    }
+    while (fgets(line,sizeof(line),fptr1))
+    {
+	sscanf(line,"%s %*c %lf",dummystr,&square);
+	if (strcmp(dummystr,"SD") == 0)
+	    break;
+    }
+    fclose(fptr1);
+
+    /***** Report the results *****/
+
+    FETCHT1PAR("PARM 1",&i0val);
+    fptr1 = fopen(titlepath,"at");
+    if (fptr1)
+    {
+	fprintf(fptr1,"standard deviation: %7.3f%%; slope: %7.3f\n",
+		square*100,i0val);
+	fclose(fptr1);
+    }
+
+    write_statistics(titlepath,square*100.0,i0val,-1.0);
+    PrintTextFile(pppathasc,"$default");
+    CPR_exec("autoplot",WAIT_TERM);
+    return 0;
+}
+
+/****************************************************************/
+/*	funclog		20.10.1996 ENG				*/
+/****************************************************************/
+/*	This function calculates the mean value and standard	*/
+/*	deviation of a data set created by a hardware test.	*/
+/*	These data sets are usually the result of a parray	*/
+/*	type acquisition. For this function, the expected	*/
+/*	height of the signals should follow an expon. decay.	*/
+/*	This expon. decay is re-calculated into a linear decay	*/
+/*	to indicate the linearity of the power level changes.	*/
+/****************************************************************/
+
+int funclog (const char* curdat, const char* titlepath,
+	     double guess1, double guess1inc)
+{
+    char line[120], dummystr[120], pppathasc[PATH_MAX];
+    FILE *fptr1;
+    double square = 0;
+
+    /***** Set some T1 fitting parameters *****/
+
+    STORET1PAR("FITTYPE",0);
+    STORET1PAR("FCTTYPE",7);
+    STORET1PAR("COMPNO",1);
+    STORET1PAR("GUESSES 0",1.0);
+    STORET1PAR("GUESSES 1",guess1);
+    STORET1PAR("GUESSES 12",0.1);
+    STORET1PAR("GUESSES 13",guess1inc);
+    STOREPAR("CURPRIN","ct1t2.txt");
+
+    /***** Fit ! *****/
+
+    CPR_exec("simfit asc",WAIT_TERM);
+
+    /***** Read fit parameter back after fitting *****/
+
+    dummystr[0] = 0;
+    strcpy(pppathasc, PROCPATH("ct1t2.txt"));
+    if ((fptr1 = fopen(pppathasc,"r")) == 0)
+    {
+	Proc_err(DEF_ERR_OPT, "Cannot open file for writing\n%s", pppathasc);
+	return -1;
+    }
+    while (fgets(line,sizeof(line),fptr1))
+    {
+	sscanf(line,"%s %*c %lf",dummystr,&square);
+	if (strcmp(dummystr,"SD") == 0)
+	    break;
+    }
+    fclose(fptr1);
+
+    /***** Report the results *****/
+
+    fptr1 = fopen(titlepath,"at");
+    if (fptr1)
+    {
+	fprintf(fptr1,"standard deviation: %10.3f%%\n",square*100.);
+	fclose(fptr1);
+    }
+
+    write_statistics(titlepath,square*100.0,-1.0,-1.0);
+    PrintTextFile(pppathasc,"$default");
+    CPR_exec("autoplot",WAIT_TERM);
+    return 0;
+}

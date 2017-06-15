@@ -1,0 +1,107 @@
+/*-*-C++-*-********************************************************
+ *
+ * $Source: /sc/CvsTree/sc/gen/src/prg/makeau/inc/exptUtil,v $
+ *
+ * Copyright (c) 1995
+ * BRUKER BIOSPIN GMBH
+ * D-76287 Rheinstetten, Germany
+ *
+ * All Rights Reserved
+ *
+ * $Id: exptUtil,v 1.13 2009/08/21 12:21:15 wem Exp $
+ *
+ *******************************************************************
+ */
+
+/*---------------------------*/
+/* print out experiment time */
+/*---------------------------*/
+void PrintExpTime(int expTime, int i1)
+{
+    char enddate[64], dbuf[512];
+    time_t t = time(0);
+    struct tm* tmpt = localtime(&t);
+
+    tmpt->tm_sec += expTime;
+    t = mktime(tmpt);
+    strftime(enddate, sizeof(enddate), "%Y-%m-%d %H:%M:%S", localtime(&t));
+
+    (void)DurationToAscii(dbuf, (double)expTime);
+    Proc_err(ERROPT_AK_NO, "starting %d experiment%s\n"
+			   "total experiment time will be: %s\n"
+			   "the expected end is: %s",
+			   i1, i1 == 1 ? "" : "s", dbuf, enddate);
+}
+
+/*--------------------------------------------------*/
+/* calculate the experiment time using expt command */
+/*--------------------------------------------------*/
+int CalcExpTime(void)
+{
+    char  inputline[PATH_MAX], path[PATH_MAX];
+    FILE* fp;
+    char* retp;
+    int   days = 0, hours = 0, minutes = 0, seconds = 0;
+
+    sprintf(path, "%s/%s/expt.%ld",
+	    PathXWinNMRProg(), PathXWinNMRCurDir(), (long)getpid());
+    sprintf(inputline,"expt \"%s\"", path);
+
+    if (CPR_exec(inputline, WAIT_TERM) != NORM_TERM)
+    {
+	Proc_err(DEF_ERR_OPT, "calculation of experiment time failed");
+	return 0;
+    }
+
+    fp = fopen(path, "r");
+    if (fp == 0)
+    {
+	Proc_err(DEF_ERR_OPT, "Cannot open file for reading:\n%s", path);
+	return 0;
+    }
+
+    retp = fgets(inputline, sizeof(inputline), fp);
+    fclose(fp);
+    unlink(path);
+
+    if (retp == 0)
+    {
+	Proc_err(DEF_ERR_OPT, "Empty file:\n%s", path);
+	return 0;
+    }
+
+    retp = strchr(inputline, '=');	/* skip "experiment time =" */
+
+    if (retp == 0)
+    {
+	Proc_err(DEF_ERR_OPT, "illegal format of expt command output");
+	return 0;
+    }
+
+    switch (sscanf(++retp, "%d%*s%d%*s%d%*s%d", &days, &hours, &minutes, &seconds))
+    {
+	case 1:
+	    seconds = days;
+	    days = 0;
+	    break;
+	case 2:
+	    seconds = hours;
+	    minutes = days;
+	    hours = 0;
+	    days = 0;
+	    break;
+	case 3:
+	    seconds = minutes;
+	    minutes = hours;
+	    hours = days;
+	    days = 0;
+	    break;
+	case 4:
+	    break;
+	default:
+	    Proc_err(DEF_ERR_OPT, "illegal format of expt command output");
+	    return 0;
+    }
+
+    return ((days * 24 + hours) * 60 + minutes) * 60 + seconds;
+}

@@ -1,0 +1,170 @@
+;mlevesgpph
+;avance-version (10/02/12)
+;homonuclear Hartman-Hahn transfer using MLEV17 sequence
+;   for mixing
+;using two power levels for excitation and spinlock
+;phase sensitive
+;
+;A. Bax & D.G. Davis, J. Magn. Reson. 65, 355-360 (1985)
+;T.-L. Hwang & A.J. Shaka, J. Magn. Reson.,
+;   Series A 112 275-279 (1995)
+;
+;$CLASS=HighRes
+;$DIM=2D
+;$TYPE=
+;$SUBTYPE=
+;$COMMENT=
+
+
+prosol relations=<triple>
+
+
+#include <Avance.incl>
+#include <Delay.incl>
+#include <Grad.incl>
+
+
+"p2=p1*2"
+"p5=p6*.667"
+"p7=p6*2"
+"d12=20u"
+
+
+"in0=inf1"
+
+"d0=in0/2-p1*2/3.1416-d12"
+
+
+"TAU=de+p1*2/3.1416+54u"
+
+
+"SCALEF=p7*2/p5"
+"FACTOR1=((d9-p17*2)/(p6*64+p5))/SCALEF"
+"l1=FACTOR1*SCALEF"
+
+
+"acqt0=0"
+baseopt_echo
+
+
+1 ze
+2 d1
+3 d12 pl1:f1
+  p1 ph1
+  d0
+  d12 pl10:f1
+  (p17 ph26)
+						;begin MLEV17
+4 (p6 ph22 p7 ph23 p6 ph22)
+  (p6 ph24 p7 ph25 p6 ph24)
+  (p6 ph24 p7 ph25 p6 ph24)
+  (p6 ph22 p7 ph23 p6 ph22)
+  (p6 ph24 p7 ph25 p6 ph24)
+  (p6 ph24 p7 ph25 p6 ph24)
+  (p6 ph22 p7 ph23 p6 ph22)
+  (p6 ph22 p7 ph23 p6 ph22)
+  (p6 ph24 p7 ph25 p6 ph24)
+  (p6 ph22 p7 ph23 p6 ph22)
+  (p6 ph22 p7 ph23 p6 ph22)
+  (p6 ph24 p7 ph25 p6 ph24)
+  (p6 ph22 p7 ph23 p6 ph22)
+  (p6 ph22 p7 ph23 p6 ph22)
+  (p6 ph24 p7 ph25 p6 ph24)
+  (p6 ph24 p7 ph25 p6 ph24)
+  (p5 ph23)
+  lo to 4 times l1 
+						;end MLEV17
+  (p17 ph26) 
+
+  50u UNBLKGRAD
+  p16:gp1
+  d16 pl0:f1
+  (p12:sp1 ph2:r):f1
+  4u
+  d12 pl1:f1
+
+  p2 ph3
+
+  4u
+  p16:gp1
+  d16 
+  TAU
+  p16:gp2
+  d16 pl0:f1
+  (p12:sp2 ph4:r):f1
+  4u
+  d12 pl1:f1
+
+  p2 ph5
+
+  4u
+  p16:gp2
+  d16
+  4u BLKGRAD
+
+  go=2 ph31
+  d1 mc #0 to 2 F1PH(calph(ph1, +90), caldel(d0, +in0))
+exit
+
+
+ph1=0 2
+ph2=0 0 1 1
+ph3=2 2 3 3
+ph4=0 0 0 0 1 1 1 1
+ph5=2 2 2 2 3 3 3 3
+ph22=3
+ph23=0
+ph24=1
+ph25=2
+ph26=0
+ph31=0 2 2 0 2 0 0 2
+
+
+;pl0 : 0W
+;pl1 : f1 channel - power level for pulse (default)
+;pl10: f1 channel - power level for TOCSY-spinlock
+;sp1 : f1 channel - shaped pulse 180 degree
+;p1 : f1 channel -  90 degree high power pulse
+;p2 : f1 channel - 180 degree high power pulse
+;p5 : f1 channel -  60 degree low power pulse
+;p6 : f1 channel -  90 degree low power pulse
+;p7 : f1 channel - 180 degree low power pulse
+;p12: f1 channel - 180 degree shaped pulse (Squa100.1000)   [2 msec]
+;p16: homospoil/gradient pulse
+;p17: f1 channel -  trim pulse                       [2.5 msec]
+;d0 : incremented delay (2D)
+;d1 : relaxation delay; 1-5 * T1
+;d9 : TOCSY mixing time
+;d12: delay for power switching                      [20 usec]
+;d16: delay for homospoil/gradient recovery
+;l1: loop for MLEV cycle: (((p6*64) + p5) * l1) + (p17*2) = mixing time
+;inf1: 1/SW = 2 * DW
+;in0: 1/(1 * SW) = 2 * DW
+;nd0: 1
+;NS: 2 * n
+;DS: 16
+;td1: number of experiments
+;FnMODE: States-TPPI, TPPI, States or QSEQ
+
+;use gradient ratio:    gp 1 : gp 2
+;                         31 :   11
+
+;for z-only gradients:
+;gpz1: 31%
+;gpz2: 11%
+
+;use gradient files:
+;gpnam1: SMSQ10.100
+;gpnam2: SMSQ10.100
+
+
+
+;Processing
+
+;PHC0(F1): 180
+;PHC1(F1): -180
+;FCOR(F1): 1
+
+
+
+;$Id: mlevesgpph,v 1.11.2.2 2010/02/12 15:14:18 ber Exp $

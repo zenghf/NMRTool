@@ -1,0 +1,44 @@
+/*** ^^A -*-C++-*- **********************************************/
+/*	zgp		          			*/
+/****************************************************************/
+/*	Short Description :					*/
+/*	Performs parahydrogen polarization experiment	*/
+/*      Set the polariser field value from CNST31               */
+/****************************************************************/
+/*	Keywords :						*/
+/*	parahydrogen					*/
+/****************************************************************/
+/*	Description/Usage :					*/
+/*	This AU program performs one parahydrogen polarization */
+/*     experiment*/
+/*  The polariser field value for the polariser is set      */
+/*      from pulse program constant name ex. CNST31 prior to    */
+/*	execution of the experiment.       			*/
+/*	Thhe magnetic field of the parahydrogen polariser will  */
+/*      be set by polarize command: #H1:GA=value		*/
+/****************************************************************/
+/*	Author(s) :						*/
+/*	Name		: Haifeng Zeng			*/
+/*	Organisation	: JHMI			*/
+/*	Email		: hzeng6@jhmi.edu*/
+/****************************************************************/
+/*	Name		Date	Modification:			*/
+/*  hz  		Aug-14-2012  created 			*/
+/****************************************************************/
+/*
+$Id: multizg_ph_b0,v 1.2 2012/03/13 13:27:27 hb Exp $
+*/
+#define IN_MIXING_CHAMBER 2
+AUERR = setpolpar(curdat, cmd);
+QUIT
+int DEBUG=1;
+#include <inc/hz_polarize>
+
+int setpolpar(const char* curdat, const char* cmd)
+{
+
+    SETCURDATA
+    setPolPar(curdat, cmd);
+    return 0;
+}
+

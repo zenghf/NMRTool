@@ -1,0 +1,8 @@
+# TOPSPIN ts_3_0 TTY configuration file
+# created automatically by 'cf'
+# do not edit, changes are lost after next 'cf'
+unit   = MAS control unit
+host   = 149.236.99.249
+device = /dev/tty04
+type   = RS232
+stty   = 9600 cs8 cstopb hupcl cread clocal ignpar istrip igncr isig icanon noflsh

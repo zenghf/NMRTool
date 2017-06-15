@@ -1,0 +1,21 @@
+md3
+#L1:FL=3100 Load 3100uL
+#H1:P3=3.0 Regenerate input pressure = 3.0 bar
+#H1:P4=2.75 Regenerate back pressure = 2.75 bar
+#H1:GA=125  Regenerate Field = 60 gauss
+#H1:TO=3.0  Regenerate V7,V4 timeout while back pressure building up
+#T1:P2=3.2  Transfer Phase 1, transfer pressure
+#T1:P1=0.9  Transfer Phase 1, back pressure
+#T1:TO=0.9 Transfer Phase 1, timeout
+#T2:P2=3.2  Transfer Phase 2, transfer pressure
+#T2:P1=2.3 Transfer Phase 2, back pressure
+#T2:TO=0.4  Transfer Phase 2, timeout
+#T3:P2=3.4  Transfer Phase 3, transfer pressure
+#T3:P1=2.4 Transfer Phase 3, back pressure
+#T3:TO=0.6  Transfer Phase 3, timeout
+#T5:GA=125   Field at end of transfer
+#R2:TO=0.4  Return timeout with high pressure (from T3:P1)
+#R3:P1=0.25 Return back pressure
+#R3:TO=20.0 Return timeout
+#E1:LO=2    Empty loops
+MP0.7       Limits pH2 input pressure to back pressure + 0.7 bar

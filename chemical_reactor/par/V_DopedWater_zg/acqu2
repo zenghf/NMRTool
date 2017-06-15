@@ -1,0 +1,17 @@
+##TITLE= Parameter file, TOPSPIN		Version 2.1
+##JCAMPDX= 5.0
+##DATATYPE= Parameter Values
+##NPOINTS= 1	$$ modification sequence number
+##ORIGIN= Bruker BioSpin GmbH
+##OWNER= rsa
+$$ 2011-07-13 15:50:54.224 +0200  rsa@EP-10002836
+$$ C:/Bruker/TOPSPIN/exp/stan/nmr/par/user/V_DopedWater_zg/acqu2
+$$ process C:\Bruker\TOPSPIN\prog\mod\edparproc.exe
+##$BF1= 700.13
+##$FnMODE= 1
+##$NUC1= <1H>
+##$O1= 3292.18
+##$SFO1= 700.13329218
+##$SW= 5.71091331725726
+##$TD= 1024
+##END=

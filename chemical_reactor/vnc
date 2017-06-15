@@ -1,0 +1,1 @@
+vncserver -geometry 1270x760 :21

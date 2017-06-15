@@ -1,0 +1,416 @@
+/*** ^^A -*-C++-*- **********************************************/
+/*	polcmd		          	       		        */
+/****************************************************************/
+/*	Short Description :					*/
+/*	Test program for BPHP polariser vs3                     */
+/****************************************************************/
+/*	Author(s) :						*/
+/*	Name		: Henriette Brzozowski			*/
+/*	Organisation	: Bruker BioSpin GmbH			*/
+/*	Email		: henriette.brzozowski@Bruker-Biospin.de*/
+/****************************************************************/
+/*
+$Id: polcmd,v 1.1 2011/11/29 14:18:22 hb Exp $
+*/
+
+AUERR = local_au(curdat);
+QUIT
+
+
+#include <inc/polariseUtil.vs3>
+
+#ifdef HAS_WINDOWS_FEATURES
+#define TTYFILE "con:"			/* Topspin start window under NT   */
+#else	/* ! HAS_WINDOWS_FEATURES */
+# define TTYFILE "/dev/tty"		/* Topspin start window under Unix */
+#endif	/* HAS_WINDOWS_FEATURES */
+
+#define POLCMD_NAME     "polcmd_nopopt"
+#define READ_CNT        1               /* option "read": set number of times read from BPHP */
+
+
+/* forward declarations */
+static void millisleep(int);
+
+static int getNextLine (
+    FILE*,
+    char*, /* buffer for data to be read */
+    size_t	/* size for data to be read including '\0'  */
+    );
+
+/*
+ * @purpose:	read next line until \r or \n or EOF is found
+ * @returns:	0 on EOF or error, 1 on success
+ */
+static int getNextLine (
+    FILE* FilePntr,
+    char* line, /* buffer for data to be read */
+    size_t size	/* size for data to be read including '\0'  */
+    )
+{
+    int ind = 0;
+    for (;;)
+    {
+	int result;
+	switch (result = fgetc (FilePntr))
+	{
+	case EOF:
+	    return 0;
+	case (int)'\n':
+	case (int)'\r':
+	    line[ind] = '\0';
+	    return 1;
+	}
+	if (ind >= size-2)
+	{
+	    Proc_err(DEF_ERR_OPT, "line %s\nto long. size=%d characters. Maximum= %d",
+		     line, ind, size);
+	    return 0;
+	}
+	line[ind++] = (char)result;
+    }
+    line[ind] = '\0';
+}
+
+static void millisleep(int msec)
+{
+#ifdef HAS_WINDOWS_FEATURES
+  Sleep((DWORD)msec);
+#else
+  struct timespec ts;
+
+  ts.tv_sec  = msec / 1000;
+  ts.tv_nsec = (msec % 1000) * 1000 * 1000;
+  nanosleep(&ts, 0);
+#endif
+}
+
+/* #define INIT_POLARIZER  "polarizer/init_polarizer" */
+/********  Start main program  ************/
+
+int local_au(const char* curdat, const char* cmd)
+{
+    TTY_DEVICE bphp;
+    char  inputFile[PATH_MAX];
+    char par1[1024];
+    char par2[1024];
+    char line[256];
+    char response[128];
+    int retClose, ret;
+    FILE    *reportFile;		/* file with detailed result of the evaluation */
+    FILE    *paramReportFile = NULL;	/* file with detailed result of the bphp system param */
+
+    const char *openmode = "wt ";
+    char polarizelogFile[PATH_MAX];
+    char paramFile[PATH_MAX];
+
+    const char* option   = 0;
+    int overwriteflag = 0;
+    FILE *FilePntr = NULL;
+    int readCnt = READ_CNT;		/* set number of times read from BPHP */
+    const char * helpText;
+
+    sprintf(paramFile, "%s/%s/polarizelogs.param", PathXWinNMRProg(), PathXWinNMRCurDir()); /*, "polarizelogs.param"); */
+
+    helpText =
+	"AU program has to be started with following arguments: \n"
+	" " POLCMD_NAME " sendfile filename <o> <a> or \n"
+	" " POLCMD_NAME " sendline string <o> <a> or \n"
+	" " POLCMD_NAME " readparam filename <o> <a> or \n"
+	" " POLCMD_NAME " read <o> <a> \n"
+	"where 'o' optional argument: overwrites logfile polarizelogs and\n"
+	"'a' optional argument: appends logfile\n\n"
+	"option 'readparam' works like 'sendfile', but the response from the polarize\n"
+	"in addition to the polarizelogs, will be save in polarize.param:\n";
+
+    /* if AU program is called with no option */
+
+    if (i_argc < 3)
+    {
+	Proc_err(DEF_ERR_OPT, "%s %s", helpText, paramFile);
+	ABORT
+    }
+
+    /* check number of options in  AU program */
+
+    if ( (i_argc > 5) && (strcmp(i_argv[2], "sendline") != 0 || (strcmp(i_argv[2], "sendfile") != 0 )) )
+    {
+	Proc_err(DEF_ERR_OPT,"AU program has to many arguments: \n\n%s%s", helpText, paramFile);
+	ABORT
+    }
+
+    /*********************************************/
+    /*  AU program is called with 2 or more options */
+
+    if (strcmp(i_argv[2], "read") == 0)	   option = "READ";
+    if (strcmp(i_argv[2], "sendfile") == 0)   option = "SENDFILE";
+    if (strcmp(i_argv[2], "sendline") == 0)   option = "SENDLINE";
+    if (strcmp(i_argv[2], "readparam") == 0)   option = "READPARAM";
+
+    if (strcmp(i_argv[2], "close") == 0)
+    {
+	retClose = closebphp(&bphp);
+	return -1;
+    }	   
+
+    /* if AU program is called with unknown option */
+    if (option == 0)
+    {
+	Proc_err(DEF_ERR_OPT, "option \"%s\" not found", i_argv[2]);
+	ABORT
+    }
+
+    if  ((i_argc > 4) || ( i_argc==4 && (strcmp(option, "READ") == 0)) )
+    {
+	if  (strcmp(i_argv[i_argc-1], "o") == 0)
+	{
+	    openmode = "wt+";
+	    overwriteflag = 1;
+	}
+	else if  (strcmp(i_argv[i_argc-1], "a") == 0)
+	{
+	    openmode = "at+"; 
+	    overwriteflag = 1;
+	}
+    }
+
+    sprintf(polarizelogFile, "%s/%s/%s", PathXWinNMRProg(), PathXWinNMRCurDir(), "polarizelogs");
+    if (overwriteflag == 0  &&  access(polarizelogFile, F_OK) == 0)
+    {
+	const char *ptr;
+
+	do
+	{
+	     ptr = Gets("prog/curdir/user/polarizelogs exists; "
+			"Append or Overwrite ? [a | o ] ","a" );
+	     if (ptr == 0)
+	     {
+		 return 0;
+	     }
+	}
+	while (*ptr != 'o' && *ptr != 'a');
+
+	if (*ptr == 'a')
+	    openmode = "at+";
+    }
+
+    if ((reportFile = fopen(polarizelogFile, openmode)) == NULL)
+    {
+	Proc_err(DEF_ERR_OPT, "Can't open %s\n%s",
+		 polarizelogFile, strerror(errno));
+	return 0;
+    }
+
+    /*sprintf(paramFile, "%s/%s/%s", PathXWinNMRProg(), PathXWinNMRCurDir(), "polarizelogs.param"); */    
+    if ((paramReportFile = fopen(paramFile, "wt")) == NULL)
+    {
+	Proc_err(DEF_ERR_OPT, "Can't open %s\n%s", paramFile, strerror(errno));
+	return 0;
+    }
+
+
+
+    /* read input filename  */
+    if (i_argc >= 4)
+	(void) strcpy(inputFile, i_argv[3]);
+
+    if (strcmp(option, "SENDFILE") == 0 && (i_argc >= 4))    /* send a single command to the polarizer */
+    {
+
+	sprintf(inputFile, "%s/%s/%s", PathXWinNMRConf(), "instr/polarizer" , i_argv[3]);
+	if ( (FilePntr = fopen(inputFile, "rt")) == NULL)
+	{
+	    Proc_err(DEF_ERR_OPT, "Cannot open output file for reading:\n%s", inputFile);
+	    ABORT
+	}
+    }
+
+    if (strcmp(option, "READPARAM") == 0 )
+    {
+	if  (i_argc >= 4)    /* read input filename */
+	{
+
+	    sprintf(inputFile, "%s/%s/%s", PathXWinNMRConf(), "instr/polarizer" , i_argv[3]);
+	    if ( (FilePntr = fopen(inputFile, "rt")) == NULL)
+	    {
+		Proc_err(DEF_ERR_OPT, "Cannot open output file for reading:\n%s", inputFile);
+		ABORT
+	    }
+	}
+	else
+	{
+	    Proc_err(DEF_ERR_OPT,"Illegal arguments: \n%s%s", helpText, paramFile);
+	    ABORT
+	}
+    }
+
+
+
+    /******************************************************************
+     * action for options: write and init 
+     *****************************************************************/
+    if (strcmp(option, "SENDLINE") == 0 )
+    {
+
+	strcpy(par1, i_argv[3]);
+	if (i_argc == 5)
+	{
+	    strcpy(par2, i_argv[4]);
+	    strcat(par1, " ");
+	    strcat(par1, par2);    /* todo: need we this ?? */
+	}
+	
+	if (DEBUG==1) printf("open for SENDLINE\n");
+	if (openbphp(&bphp) < 0)
+	{
+	    Proc_err(DEF_ERR_OPT, "polcmd: openbphp < 0");
+	    return -1;
+	}
+
+
+	strcat(par1, "\r");
+
+	if ( (ret = writeCmnd( &bphp, par1)) <0 )    /* whole line  */
+	    return -1;
+
+	(void)fprintf(reportFile,"%s\n", par1);
+	(void)fflush (reportFile);
+
+	if (DEBUG==1) printf("\nwritten: %s\n", par1);
+
+	(void) sleep(1);  /* todo: change to 500 ms */
+	if (readResponse(&bphp, response) <0)
+	    return -1;
+
+	(void)fprintf(reportFile,"%s", response);
+	(void)fflush (reportFile);
+ 
+	if (DEBUG==1) printf("\nLINE bphp response=%s\n", response);
+
+	/*Proc_err(INFO_OPT,"polcmd sendline finished\n%s", response);/**/
+
+	if (closebphp(&bphp) < 0)
+	    return -1;
+	return 0;
+    }
+
+
+    /******************************************************************
+     * action for options: sendfile:  SENDFILE 
+     *****************************************************************/
+
+    else  if ((strcmp(option, "SENDFILE") == 0) || (strcmp(option, "READPARAM") == 0 ))
+    {
+	int inumber=0;
+
+	ret = openbphp(&bphp); /*if (openbphp(&bphp) < 0)
+				 return -1; */
+	if (ret<0)
+	{
+	    Proc_err(DEF_ERR_OPT, "sendfile: polcmd: openbphp < 0  %d", ret);
+	    printf("sendfile. polcmd: openbphp=%d\n", ret);
+	    return -1;
+	}
+
+	if (strcmp(option, "READPARAM") == 0 && (paramReportFile != NULL) )
+	{
+
+	    (void)fprintf(paramReportFile, "input file: %s\n", inputFile);
+	    (void)fflush (paramReportFile);
+	}
+
+	/*if (DEBUG==1)  Proc_err(DEF_ERR_OPT, "polcmd: openbphp= %d", ret); */
+	fseek(FilePntr, 0, SEEK_SET);
+	while (getNextLine (FilePntr, line, sizeof line))
+	{
+	    if (line[0] != '\0')
+		inumber++;
+	}
+
+	fseek(FilePntr, 0, SEEK_SET);
+
+	while (getNextLine (FilePntr, line, sizeof line))
+	{
+	    if (line[0] == '\0')
+		continue;
+	    strcat(line, "\r");
+
+	    /* send command into polarize */
+	    if ( writeCmnd( &bphp, line) < 0 )    /* whole line or parameter ???? */
+		return -1;
+
+	    (void)fprintf(reportFile, "%s", line);
+	    (void)fflush (reportFile);
+
+	    if (--inumber == 0)
+	    { 
+		(void) millisleep(200);  /* sleep(1);  sleep before the last read will be called  */
+	    }
+	    if (readResponse(&bphp, response) <0)
+		 return -1;
+
+	    (void)fprintf(reportFile,"%s", response);
+	    (void)fflush (reportFile);
+	    if (strcmp(option, "READPARAM") == 0  && (paramReportFile != NULL))
+	    {
+		(void)fprintf(paramReportFile,"%s", response);
+		(void)fflush (paramReportFile);
+
+	    }
+	}
+
+	fclose(reportFile);
+	if (paramReportFile != NULL)
+	    fclose(paramReportFile);
+
+	fclose(FilePntr);
+	if (closebphp(&bphp) < 0)
+	    return -1;
+
+	/*Proc_err(INFO_OPT,"polcmd sendfile finished\n%s", response);/**/
+	return 0;
+    }
+
+    /******************************************************************/
+    /* action for options: read                                       */
+    /******************************************************************/
+
+    if (strcmp(option, "READ") == 0)
+    {
+
+	if ( reportFile == NULL)
+	{
+	    Proc_err(DEF_ERR_OPT, "Cannot open report file for writing");
+	    ABORT
+	}
+
+	/* read command from polarize */
+	if (DEBUG==1) printf("open for READ\n");
+	if (openbphp(&bphp) < 0)
+	    return -1;
+
+	while (readCnt--)
+	{
+	    if (readResponse(&bphp, response) <0)
+	    {
+		fclose(reportFile);
+		closebphp(&bphp);
+		return -1;
+	    }
+
+	    if (DEBUG==1) printf("readResponse: response=%s\n", response);
+	    if (strlen(response) > 0)
+		fprintf(reportFile, "option read: %s", response);
+	    fflush(reportFile);
+	}
+    
+    fclose(reportFile);
+    if (closebphp(&bphp) < 0)
+	return -1;
+
+    return 0;
+    }
+
+return 0;
+}
+

@@ -1,0 +1,57 @@
+;cest sweep
+;avance-version (07/04/03)
+;T1 measurement using inversion recovery
+;
+;$CLASS=HighRes
+;$DIM=2D
+;$TYPE=
+;$SUBTYPE=
+;$COMMENT=
+
+
+#include <Avance.incl>
+define list<frequency> fqlist = <$FQ1LIST>
+
+"p2=p1*2"
+"d11=30m"
+
+
+"acqt0=-p1*2/3.1416"
+
+
+1 ze
+2 d1
+  d12 pl9:f1 fqlist:f1
+  d9 cw:f1 ph29
+  4u do:f1
+  d12 pl1:f1
+  p1 ph1
+  go=2 ph31
+  d11 wr #0 if #0 fqlist.inc
+  lo to 1 times td1
+exit
+
+
+ph1=0 2 2 0 1 3 3 1
+ph29=0
+ph31=0 2 2 0 1 3 3 1
+
+
+;pl1 : f1 channel - power level for pulse (default)
+;p1 : f1 channel -  90 degree high power pulse
+;p2 : f1 channel - 180 degree high power pulse
+;d1 : relaxation delay; 1-5 * T1
+;d11: delay for disk I/O                             [30 msec]
+;vd : variable delay, taken from vd-list
+;NS: 8 * n
+;DS: 4
+;td1: number of experiments = number of delays in vd-list
+;FnMODE: undefined
+
+;define VDLIST
+
+;this pulse program produces a ser-file (PARMOD = 2D)
+
+
+
+;$Id: t1ir,v 1.12 2009/07/02 16:40:46 ber Exp $

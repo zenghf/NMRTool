@@ -1,0 +1,45 @@
+;t1ir
+;avance-version (07/04/03)
+;T1 measurement using inversion recovery
+;
+;$CLASS=HighRes
+;$DIM=2D
+;$TYPE=
+;$SUBTYPE=
+;$COMMENT=
+
+
+#include <Avance.incl>
+
+"d11=30m"
+
+
+"acqt0=-p1*2/3.1416"
+
+
+1 ze
+2 d1
+  p1 ph1
+  go=2 ph31
+  d11 wr #0 if #0 
+  lo to 1 times td1
+exit
+
+
+ph1=0
+ph31=0 
+
+
+;pl1 : f1 channel - power level for pulse (default)
+;p1 : f1 channel -  90 degree high power pulse
+;d1 : relaxation delay; 1-5 * T1
+;d11: delay for disk I/O                             [30 msec]
+;NS: 8 * n
+;DS: 4
+;td1: number of experiments = number of delays in vd-list
+;FnMODE: undefined
+;this pulse program produces a ser-file (PARMOD = 2D)
+
+
+
+;$Id: t1ir,v 1.12 2009/07/02 16:40:46 ber Exp $

@@ -1,0 +1,367 @@
+/*** ^^A -*-C++-*- **********************************************/
+/*	zgp		          			*/
+/****************************************************************/
+/*	Short Description :					*/
+/*	Performs parahydrogen polarization experiment	*/
+/*      Set the polariser field value from CNST31               */
+/****************************************************************/
+/*	Keywords :						*/
+/*	parahydrogen					*/
+/****************************************************************/
+/*	Description/Usage :					*/
+/*	This AU program performs one parahydrogen polarization */
+/*     experiment*/
+/*  The polariser field value for the polariser is set      */
+/*      from pulse program constant name ex. CNST31 prior to    */
+/*	execution of the experiment.       			*/
+/*	Thhe magnetic field of the parahydrogen polariser will  */
+/*      be set by polarize command: #H1:GA=value		*/
+/****************************************************************/
+/*	Author(s) :						*/
+/*	Name		: Haifeng Zeng			*/
+/*	Organisation	: JHMI			*/
+/*	Email		: hzeng6@jhmi.edu*/
+/****************************************************************/
+/*	Name		Date	Modification:			*/
+/*  hz  		Aug-14-2012  created 			*/
+/****************************************************************/
+/*
+$Id: multizg_ph_b0,v 1.2 2012/03/13 13:27:27 hb Exp $
+*/
+
+AUERR = zgp3(curdat, cmd);
+QUIT
+int DEBUG=1;
+#include <inc/exptUtil>
+#include <inc/polariseUtil.vs3>
+#include <string.h>
+#include <time.h>
+
+int polWriteCmnd(TTY_DEVICE *bphp, char* cmndName, int cmndType, float cmndVal, int cmndValType, char* comments, int timeout, int flagWriteTitle);
+void writeTitle(char * titleLine);
+void trimTitle(void);
+typedef struct
+{
+    char key[5];
+    char name[100];
+    float min_v;
+    float max_v;
+} polParValidStruct;
+
+typedef struct
+{
+    char cmndName[50];
+    char topSpinVarName[50];
+    int cmndType;
+    int cmndValType;
+    char comments[100];
+} topSpin2PolStruct;
+
+/* cmndType */
+/*      BPHP reference page 62 */
+/*      1. Commands which ?do? something immediately and can be sent at any time. For example: ?ga65.7? sets the coil field strength to 65.7 gauss. */
+/*      2. Commands  which  configure  some  general  condition  in  the  polariser. For example ?md2? enables the serial mode control. */
+/*      3. Commands  which  start  one  of  the  polariser  transfer  related  operations.  For example ?IPmt? starts the empty polariser process. */
+/*      4. Commands which configure the state machines for transfer related operations. For example ?#L1:FL=2700? sets the load volume to 2700µL */
+/*      5. Queries: All queries have the ??? character somewhere in the command string. For example ?AV?? queries the application firmware level. */
+/*                                                                                                                                           */
+/* cmndValType */
+/*      0. no value; 1. int; 2. float; 3. binary */
+
+topSpin2PolStruct topSpin2PolArray[]={
+	  {"#L1:FL" , "CNST 27" , 4 , 2 , "Regenerate input pressure "},
+		{"#H1:P3" , "CNST 28" , 4 , 2 , "Regenerate input pressure "},
+    {"#H1:P4" , "CNST 29" , 4 , 2 , "Regenerate back pressure "},
+    {"go" , "CNST 30" , 1 , 2 , "Magnetic field offset, stray field of the NMR magnet"},
+    {"#H1:GA" , "CNST 31" , 4 , 2 , "Regenerate Field "},
+    {"#H1:TO" , "CNST 32" , 4 , 2 , "Timeout while back pressure building up"},
+    {"#T1:P2" , "CNST 33" , 4 , 2 , "Transfer Phase 1, transfer pressure"},
+    {"#T1:P1" , "CNST 34" , 4 , 2 , "Transfer Phase 1, back pressure"},
+    {"#T1:TO" , "CNST 35" , 4 , 2 , "Transfer Phase 1, timeout"},
+    {"#T2:P2" , "CNST 36" , 4 , 2 , "Transfer Phase 2, transfer pressure"},
+    {"#T2:P1" , "CNST 37" , 4 , 2 , "Transfer Phase 2, back pressure"},
+    {"#T2:TO" , "CNST 38" , 4 , 2 , "Transfer Phase 2, timeout"},
+    {"#T3:P2" , "CNST 39" , 4 , 2 , "Transfer Phase 3, transfer pressure"},
+    {"#T3:P1" , "CNST 40" , 4 , 2 , "Transfer Phase 3, back pressure"},
+    {"#T3:TO" , "CNST 41" , 4 , 2 , "Transfer Phase 3, timeout"},
+    {"#T5:GA" , "CNST 42" , 4 , 2 , "Field at the end of transfer"},
+    {"#R2:TO" , "CNST 43" , 4 , 2 , "Return timeout with high pressure (from T3:P1)"},
+    {"#R3:P1" , "CNST 44" , 4 , 2 , "Return back pressure"},
+    {"#R3:TO" , "CNST 45" , 4 , 2 , "Return timeout"},
+    {"MP" , "CNST 46" , 2 , 2 , "Maximum pressure difference for VR3 and VR4 during regeneration"},
+    {"mp" , "CNST 47" , 2 , 2 , "Minimum pressure difference for VR3 and VR4 during regeneration"}
+};
+
+polParValidStruct polParValidArray[] = {
+    {"go",  "Polarizer Field",                                                      -148.0, 148.0},
+    {"ga",  "Polarizer Field",                                                      -148.0, 148.0},
+    {"GA",  "Polarizer Field",                                                      -148.0, 148.0},
+    {"MP",  "maximum pressure difference for VR3 and VR4 during regeneration",      0.0,    4.0},
+    {"mp",  "manimum pressure difference for VR3 and VR4 during regeneration",      0.0,    2.0},
+    {"md",  "mode",                                                                 0.0,    3.0},
+    {"P1",  "Regulator VR1 at P1",                                                  0.0,    4.595},
+    {"P2",  "Regulator VR2 at P2",                                                  0.0,    4.595},
+    {"P3",  "Regulator VR3 at P3",                                                  0.0,    5.0},
+    {"P4",  "Regulator VR4 at P4",                                                  0.0,    5.0}
+};
+
+int zgp3(const char* curdat, const char* cmd)
+{
+    TTY_DEVICE *bphp, bphp0;
+    bphp = &bphp0;
+    char *envpnt;
+    int k, zgsafety, nPolPar;
+    char constantVariable[30], message[100];
+    char titleLine[1024];
+    float polParVal;
+    topSpin2PolStruct *p;
+    /*********************************************************************/
+    if (openbphp(bphp) < 0)
+    {
+        Proc_err(DEF_ERR_OPT, "zgp: openbphp < 0");
+        return -1;
+    }
+
+    /* Turn zg safety off if on. Turn it back on at the end. */
+    envpnt = getenv("UXNMR_SAFETY");
+    zgsafety = 0;
+    if (envpnt != NULL)
+    {
+        if (strcasecmp(envpnt, "on") == 0)
+        {
+            zgsafety = 1;
+            CPR_exec("env set UXNMR_SAFETY=off", WAIT_TERM);
+        }
+    }
+
+    SETCURDATA
+
+    /*********************************************************************/
+    /* Set polarizer parameters from Topspin Acquisition parameters      */
+    /*********************************************************************/
+    trimTitle();
+    nPolPar = sizeof(topSpin2PolArray) / sizeof(*topSpin2PolArray);
+    time_t rawtime;
+    time( &rawtime );
+    sprintf(titleLine,"\n---%s", ctime (&rawtime));
+    *(titleLine+strlen(titleLine)-1) = '\0';
+    writeTitle(titleLine);
+    for(k=0;k<nPolPar;k++)
+    {
+        p = topSpin2PolArray + k;
+        FETCHPAR(p->topSpinVarName, &polParVal); 
+        if (polWriteCmnd(bphp, p->cmndName, p->cmndType, polParVal, p->cmndValType, p->comments, 40, 1) < 0)
+        {
+            sprintf(message, "\nError executing command < %s > with parameter <%.2f>\n Comments: setting <%s> ",
+                p->cmndName, polParVal, p->comments);
+            STOPMSG( message );
+            return -1;
+        }
+    }
+    /*********************************************************************/
+    /*sleep(2);*/           
+
+    /*ZG */
+
+    if (zgsafety == 1)
+    CPR_exec("env set UXNMR_SAFETY=on", WAIT_TERM);
+
+    return 0;
+}
+
+
+
+/* function to write a command to BPHP */
+int polWriteCmnd(TTY_DEVICE *bphp, char* cmndName, int cmndType, float cmndVal, int cmndValType, char* comments, int timeout, int flagWriteTitle)
+{
+    /* cmndType */
+    /*      BPHP reference page 62 */
+    /*      1. Commands which ?do? something immediately and can be sent at any time. For example: ?ga65.7? sets the coil field strength to 65.7 gauss. */
+    /*      2. Commands  which  configure  some  general  condition  in  the  polariser. For example ?md2? enables the serial mode control. */
+    /*      3. Commands  which  start  one  of  the  polariser  transfer  related  operations.  For example ?IPmt? starts the empty polariser process. */
+    /*      4. Commands which configure the state machines for transfer related operations. For example ?#L1:FL=2700? sets the load volume to 2700µL */
+    /*      5. Queries: All queries have the ??? character somewhere in the command string. For example ?AV?? queries the application firmware level. */
+    /*                                                                                                                                           */
+    /* cmndValType */
+    /*      0. no value; 1. int; 2. float; 3. binary */
+		/* printf("starting polwritecmnd\n"); */
+    char resultExpected[PATH_MAX];
+    char statusline[1024], message[1024];
+    char titleLine[1024];
+    int ret, i, k, nPolParValid;
+
+    char debugmessage[1024];
+    char response[128];
+
+    polParValidStruct polParValid;
+
+    /* validate the parameter */   
+
+    nPolParValid = sizeof(polParValidArray)/sizeof(*polParValidArray);
+    if (cmndValType == 1 || cmndValType == 2)
+    {
+        for(k=0;k<nPolParValid;k++)
+        {
+            polParValid = polParValidArray[k];
+            if (strstr(cmndName, polParValid.key) != NULL)
+            {
+                if (cmndVal < polParValid.min_v || cmndVal > polParValid.max_v)
+                {
+                    sprintf(message, "%s %.2f in Command <%s> Out Of Range\nLimit is between %.2f and %.2f",
+                    polParValid.name, cmndName, polParValid.min_v, polParValid.max_v);
+                    STOPMSG( message );
+                    return -1;
+                }
+                break;
+            }
+        }
+    }
+
+ 
+
+    /* the command to write into BPHP */
+    char cmndValSymb[2];
+    if (cmndType == 4)
+        strcpy(cmndValSymb, "=");
+    else
+        strcpy(cmndValSymb, "");
+
+    switch(cmndValType)
+    {
+        case 0:
+            (void)sprintf(polCmnd, "%s", cmndName);
+            break;
+        case 1:
+            (void)sprintf(polCmnd, "%s%s%u", cmndName, cmndValSymb, cmndVal);
+            break;
+        case 2:
+            (void)sprintf(polCmnd, "%s%s%.2f", cmndName, cmndValSymb, cmndVal);
+            break;
+        case 3:
+            (void)sprintf(polCmnd, "%s%s%07d", cmndName, cmndValSymb, cmndVal);
+            break;
+    }
+
+ 
+    /* we expect polCmnd + OK */
+    sprintf(resultExpected, "%s OK", polCmnd);
+
+    /* Terminate command string with a CR character */
+    strcat(polCmnd,"\r");
+
+    /* Send the command to the polarizer */
+    if (DEBUG==1)
+    {
+        (void)sprintf( message, "\nSet the command to be sent to the polarizer < %s >", polCmnd);
+        printf( message );
+    }
+
+    strcpy(response, "");      /* init before read and compare */
+    i=0;                  /* init for next expno experiment */
+    while((strncmp(response, resultExpected, strlen(resultExpected)-3) != 0) && ( i <= timeout ))
+    {
+        (void) sprintf(statusline, "Sending the command < %s > to the polarizer\n", polCmnd);
+        Show_status(statusline);
+
+        if ( (ret = writeCmnd( bphp, polCmnd)) <0 )    /* write to polarizer */
+            return -1;
+        if (readResponse(bphp, polResponse) <0)
+            return -1;
+        (void)sprintf(response, "%s", polResponse);
+				*(response+strlen(response)-1) = '\0';
+        if(DEBUG==1)
+        {
+            (void)sprintf( debugmessage, "Comparing value read from polariser:  < %s >  with value sent: < %s >",
+                response, polCmnd);
+            printf(debugmessage);
+        }
+        i++;
+
+        if (i==timeout)
+        {
+            (void)sprintf( debugmessage, "\nFailed to send to the polariser < %s > after %d attempts", 
+                polCmnd , timeout);
+            if (DEBUG==1)
+                printf(debugmessage);
+            STOPMSG( debugmessage );
+        }
+    }
+
+    (void) sprintf(statusline,"Successfully send to the polariser < %s > ", polCmnd);
+
+    if(DEBUG==1)
+    {
+        (void)sprintf( debugmessage, "\n%s\n", statusline);
+        printf(debugmessage);
+    }
+    Show_status(statusline);
+
+    /**************************************************************
+    write the polarizer command to the title 
+    ***************************************************************/
+    if (flagWriteTitle == 1)
+    {
+        (void)sprintf(titleLine, "\n---%s      <%s>", polCmnd, comments);
+        writeTitle(titleLine);
+    }
+    return 0;
+}
+
+void writeTitle(char * titleLine)
+{
+	  FILE *titlefp;
+    if ((titlefp = fopen(PROCPATH("title"), "at")) == NULL)
+    {
+        Proc_err(DEF_ERR_OPT, "Can't open %s\n%s",
+        PROCPATH("title"), strerror(errno));
+        return ;
+    }
+    (void)fprintf(titlefp, titleLine);
+    fclose (titlefp);
+}
+
+void trimTitle(void)
+{
+    int n=1;/**/
+    int k=0;
+    char titlefpName[100];
+    FILE *titlefp;
+    FILE *pFile;
+    char line_buffer[BUFSIZ]; /* BUFSIZ is defined if you include stdio.h */
+
+
+    if ((titlefp = fopen(PROCPATH("title"), "r")) == NULL)
+    {
+        Proc_err(DEF_ERR_OPT, "Can't open %s\n%s",
+        PROCPATH("title"), strerror(errno));
+        return ;
+    }	
+    
+    pFile = tmpfile();
+    
+    while (fgets(line_buffer, sizeof(line_buffer), titlefp) != NULL)
+    {
+        n = 0;
+        for(k=0;k<strlen(line_buffer);k++,n = n + ((isspace(line_buffer[k]))?1:0));
+        if ((strncmp(line_buffer, "---", 3)  != 0) && (n < strlen(line_buffer) - 1) ) 
+        {
+            fputs(line_buffer, pFile);
+        }
+    }
+    
+    fclose(titlefp);
+
+    if ((titlefp = fopen(PROCPATH("title"), "w")) == NULL)
+    {
+        Proc_err(DEF_ERR_OPT, "Can't open %s\n%s",
+        PROCPATH("title"), strerror(errno));
+        return ;
+    }	
+    rewind(pFile);
+    while (fgets(line_buffer, sizeof(line_buffer), pFile) != NULL)
+    {
+        fputs(line_buffer, titlefp);
+    }
+    fclose(titlefp);
+    fclose(pFile);        
+}

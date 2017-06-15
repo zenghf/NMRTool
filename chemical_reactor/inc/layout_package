@@ -1,0 +1,794 @@
+/*-*-C++-*-********************************************************
+ *
+ * $Source: /sc/CvsTree/sc/gen/src/prg/makeau/inc/layout_package,v $
+ *
+ * Copyright (c) 2005
+ * BRUKER BIOSPIN GMBH
+ * D-76287 Rheinstetten, Germany
+ *
+ * All Rights Reserved
+ *
+ *
+ * $Id: layout_package,v 1.8 2010/03/01 13:26:13 prs Exp $
+ *
+ *******************************************************************
+*/
+
+#ifndef LAYOUT_PACKAGE_IMPL_INCLUDED
+#define LAYOUT_PACKAGE_IMPL_INCLUDED
+
+	int brukerLpgAuFunction(char* curdat, char* cmd);
+	brukerLpgAuFunction(curdat, cmd);
+QUIT
+
+#include "inc/layout_package_h"
+
+
+#define LAYOUT_BEGIN_FILE(x, y)	    \
+	if(lpgFileHandle != 0)	    \
+	{			    \
+	    Proc_err(DEF_ERR_OPT, "Problem in AU code, line#%d:\n"	\
+		"using LAYOUT_BEGIN_FILE while last layout not ENDed", __LINE__); \
+	    Exit_unimar(ERR_TERM);					\
+	}			    \
+	lpgOpenLayoutFile(&lpgFileHandle, x);   \
+	lpgWriteLayoutHeader(lpgFileHandle, &y);
+
+#define LAYOUT_END_FILE		    \
+	if(lpgFileHandle == 0)	    \
+	{			    \
+	    Proc_err(DEF_ERR_OPT, "Problem in AU code, line#%d:\n"	\
+		"using LAYOUT_END_FILE but no layout active\n"		\
+		"(forgot LAYOUT_BEGIN_FILE ?)", __LINE__);		\
+	    Exit_unimar(ERR_TERM);					\
+	}			    \
+	lpgCloseLayoutFile(&lpgFileHandle);
+
+
+
+#define LAYOUT_ADD(x)		    						\
+	{			    						\
+	if(lpgFileHandle == 0)	    						\
+	{			    						\
+	    Proc_err(DEF_ERR_OPT, "Problem in AU code, line#%d:\n"		\
+		"using LAYOUT_ADD() but no layout active\n"			\
+		"(forgot LAYOUT_BEGIN_FILE ?)", __LINE__);			\
+	    Exit_unimar(ERR_TERM);						\
+	}			    						\
+	if(x.hasBeenInitialised	!= 2102)					\
+	{			    						\
+	    Proc_err(DEF_ERR_OPT, "Problem in AU code, line#%d:\n"		\
+		"using LAYOUT_ADD() with uninitialised LAYOUT_xyz type\n"	\
+		"(forgot LAYOUT_xyz_DEFAULTS ?)", __LINE__);			\
+	    Exit_unimar(ERR_TERM);						\
+	}			    						\
+	switch(x.structType)							\
+	{									\
+	    case LayoutStructTypeTitle:						\
+		lpgWriteTitle(lpgFileHandle, (LAYOUT_OBJ_TITLE*) &x);		\
+		break;								\
+	    case LayoutStructTypeText:						\
+		lpgWriteText(lpgFileHandle, (LAYOUT_OBJ_TEXT*) &x);		\
+		break;								\
+	    case LayoutStructType1d:						\
+		lpgWrite1Dobject(lpgFileHandle, (LAYOUT_OBJ_1D*) &x);		\
+		break;								\
+	    case LayoutStructType2d:						\
+		lpgWrite2Dobject(lpgFileHandle, (LAYOUT_OBJ_2D*) &x);		\
+		break;								\
+	    case LayoutStructTypeAttributes:					\
+		lpgWriteGC(lpgFileHandle, (LAYOUT_ATTRIBUTES*) &x);		\
+		break;								\
+	    case LayoutStructTypeRectangle:					\
+		lpgWriteRectangle(lpgFileHandle, (LAYOUT_OBJ_RECTANGLE*) &x);	\
+		break;								\
+	    case LayoutStructTypeEllipse:					\
+		lpgWriteCircle(lpgFileHandle, (LAYOUT_OBJ_ELLIPSE*) &x);	\
+		break;								\
+	    case LayoutStructTypeLine:						\
+		lpgWriteLine(lpgFileHandle, (LAYOUT_OBJ_LINE*) &x);		\
+		break;								\
+	    case LayoutStructTypeParameters:					\
+		lpgWriteParameters(lpgFileHandle, (LAYOUT_OBJ_PARAMETERS*) &x);	\
+		break;								\
+	    case LayoutStructTypeMetafile:					\
+		lpgWriteMetafile(lpgFileHandle, (LAYOUT_OBJ_METAFILE*) &x);	\
+		break;								\
+	    case LayoutStructTypeNMRText:					\
+		lpgWriteNMRText(lpgFileHandle, (LAYOUT_OBJ_NMRTEXT*) &x);	\
+		break;								\
+	}									\
+	}
+#define LAYOUT_ADD_TITLE(x)	    \
+	if(lpgFileHandle == 0)	    \
+	{			    \
+	    Proc_err(DEF_ERR_OPT, "Problem in AU code, line#%d:\n"	\
+		"using LAYOUT_ADD_TITLE but no layout active\n"		\
+		"(forgot LAYOUT_BEGIN_FILE ?)", __LINE__);		\
+	    Exit_unimar(ERR_TERM);					\
+	}			    \
+	if(x.hasBeenInitialised	!= 2102)				\
+	{			    \
+	    Proc_err(DEF_ERR_OPT, "Problem in AU code, line#%d:\n"	\
+		"using LAYOUT_ADD_TITLE with uninitialised struct\n"	\
+		"(forgot LAYOUT_TITLE_DEFAULTS ?)", __LINE__);		\
+	    Exit_unimar(ERR_TERM);					\
+	}			    \
+	lpgWriteTitle(lpgFileHandle, &x);
+#define LAYOUT_ADD_TEXT(x)	    \
+	if(lpgFileHandle == 0)	    \
+	{			    \
+	    Proc_err(DEF_ERR_OPT, "Problem in AU code, line#%d:\n"	\
+		"using LAYOUT_ADD_TEXT but no layout active\n"		\
+		"(forgot LAYOUT_BEGIN_FILE ?)", __LINE__);		\
+	    Exit_unimar(ERR_TERM);					\
+	}			    \
+	if(x.hasBeenInitialised	!= 2102)				\
+	{			    \
+	    Proc_err(DEF_ERR_OPT, "Problem in AU code, line#%d:\n"	\
+		"using LAYOUT_ADD_TEXT with uninitialised struct\n"	\
+		"(forgot LAYOUT_TEXT_DEFAULTS ?)", __LINE__);		\
+	    Exit_unimar(ERR_TERM);					\
+	}			    \
+	lpgWriteText(lpgFileHandle, &x);
+#define LAYOUT_ADD_1D_OBJECT(x)	    \
+	if(lpgFileHandle == 0)	    \
+	{			    \
+	    Proc_err(DEF_ERR_OPT, "Problem in AU code, line#%d:\n"	\
+		"using LAYOUT_ADD_1D_OBJECT but no layout active\n"	\
+		"(forgot LAYOUT_BEGIN_FILE ?)", __LINE__);		\
+	    Exit_unimar(ERR_TERM);					\
+	}			    \
+	if(x.hasBeenInitialised	!= 2102)				\
+	{			    \
+	    Proc_err(DEF_ERR_OPT, "Problem in AU code, line#%d:\n"	\
+		"using LAYOUT_ADD_1D_OBJECT with uninitialised struct\n"\
+		"(forgot LAYOUT_1D_DEFAULTS ?)", __LINE__);		\
+	    Exit_unimar(ERR_TERM);					\
+	}			    \
+	lpgWrite1Dobject(lpgFileHandle, &x);
+#define LAYOUT_ADD_2D_OBJECT(x)	    \
+	if(lpgFileHandle == 0)	    \
+	{			    \
+	    Proc_err(DEF_ERR_OPT, "Problem in AU code, line#%d:\n"	\
+		"using LAYOUT_ADD_2D_OBJECT but no layout active\n"	\
+		"(forgot LAYOUT_BEGIN_FILE ?)", __LINE__);		\
+	    Exit_unimar(ERR_TERM);					\
+	}			    \
+	if(x.hasBeenInitialised	!= 2102)				\
+	{			    \
+	    Proc_err(DEF_ERR_OPT, "Problem in AU code, line#%d:\n"	\
+		"using LAYOUT_ADD_2D_OBJECT with uninitialised struct\n"\
+		"(forgot LAYOUT_2D_DEFAULTS ?)", __LINE__);		\
+	    Exit_unimar(ERR_TERM);					\
+	}			    \
+	lpgWrite2Dobject(lpgFileHandle, &x);
+#define LAYOUT_ADD_ATTRIBUTES(x)    \
+	if(lpgFileHandle == 0)	    \
+	{			    \
+	    Proc_err(DEF_ERR_OPT, "Problem in AU code, line#%d:\n"	\
+		"using LAYOUT_ADD_ATTRIBUTES but no layout active\n"	\
+		"(forgot LAYOUT_BEGIN_FILE ?)", __LINE__);		\
+	    Exit_unimar(ERR_TERM);					\
+	}			    \
+	if(x.hasBeenInitialised	!= 2102)				\
+	{			    \
+	    Proc_err(DEF_ERR_OPT, "Problem in AU code, line#%d:\n"	\
+		"using LAYOUT_ADD_ATTRIBUTES with uninitialised struct\n" \
+		"(forgot LAYOUT_ATTRIBUTES_DEFAULTS ?)", __LINE__);	\
+	    Exit_unimar(ERR_TERM);					\
+	}			    \
+	x.attributeId = lpgGlbLayoutGcCounter++; \
+	lpgWriteGC(lpgFileHandle, &x);
+#define LAYOUT_ADD_RECTANGLE(x)	    \
+	if(lpgFileHandle == 0)	    \
+	{			    \
+	    Proc_err(DEF_ERR_OPT, "Problem in AU code, line#%d:\n"	\
+		"using LAYOUT_ADD_RECTANGLE but no layout active\n"	\
+		"(forgot LAYOUT_BEGIN_FILE ?)", __LINE__);		\
+	    Exit_unimar(ERR_TERM);					\
+	}			    \
+	if(x.hasBeenInitialised	!= 2102)				\
+	{			    \
+	    Proc_err(DEF_ERR_OPT, "Problem in AU code, line#%d:\n"	\
+		"using LAYOUT_ADD_RECTANGLE with uninitialised struct\n"\
+		"(forgot LAYOUT_RECTANGLE_DEFAULTS ?)", __LINE__);	\
+	    Exit_unimar(ERR_TERM);					\
+	}			    \
+	lpgWriteRectangle(lpgFileHandle, &x);
+#define LAYOUT_ADD_LINE(x)	    \
+	if(lpgFileHandle == 0)	    \
+	{			    \
+	    Proc_err(DEF_ERR_OPT, "Problem in AU code, line#%d:\n"	\
+		"using LAYOUT_ADD_LINE but no layout active\n"		\
+		"(forgot LAYOUT_BEGIN_FILE ?)", __LINE__);		\
+	    Exit_unimar(ERR_TERM);					\
+	}			    \
+	if(x.hasBeenInitialised	!= 2102)				\
+	{			    \
+	    Proc_err(DEF_ERR_OPT, "Problem in AU code, line#%d:\n"	\
+		"using LAYOUT_ADD_LINE with uninitialised struct\n"	\
+		"(forgot LAYOUT_LINE_DEFAULTS ?)", __LINE__);		\
+	    Exit_unimar(ERR_TERM);					\
+	}			    \
+	lpgWriteLine(lpgFileHandle, &x);
+#define LAYOUT_ADD_ELLIPSE(x)	    \
+	if(lpgFileHandle == 0)	    \
+	{			    \
+	    Proc_err(DEF_ERR_OPT, "Problem in AU code, line#%d:\n"	\
+		"using LAYOUT_ADD_ELLIPSE but no layout active\n"	\
+		"(forgot LAYOUT_BEGIN_FILE ?)", __LINE__);		\
+	    Exit_unimar(ERR_TERM);					\
+	}			    \
+	if(x.hasBeenInitialised	!= 2102)				\
+	{			    \
+	    Proc_err(DEF_ERR_OPT, "Problem in AU code, line#%d:\n"	\
+		"using LAYOUT_ADD_ELLIPSE with uninitialised struct\n"	\
+		"(forgot LAYOUT_ELLIPSE_DEFAULTS ?)", __LINE__);	\
+	    Exit_unimar(ERR_TERM);					\
+	}			    \
+	lpgWriteCircle(lpgFileHandle, &x);
+#define LAYOUT_ADD_PARAMETERS(x) \
+	if(lpgFileHandle == 0)	    \
+	{			    \
+	    Proc_err(DEF_ERR_OPT, "Problem in AU code, line#%d:\n"	\
+		"using LAYOUT_ADD_PARAMETERS but no layout active\n"	\
+		"(forgot LAYOUT_BEGIN_FILE ?)", __LINE__);		\
+	    Exit_unimar(ERR_TERM);					\
+	}			    \
+	if(x.hasBeenInitialised	!= 2102)				\
+	{			    \
+	    Proc_err(DEF_ERR_OPT, "Problem in AU code, line#%d:\n"	\
+		"using LAYOUT_ADD_PARAMETERS with uninitialised struct\n" \
+		"(forgot LAYOUT_PARAMETERS_DEFAULTS ?)", __LINE__);	\
+	    Exit_unimar(ERR_TERM);					\
+	}			    \
+	lpgWriteParameters(lpgFileHandle, &x);
+#define LAYOUT_ADD_METAFILE(x) \
+	if(lpgFileHandle == 0)	    \
+	{			    \
+	    Proc_err(DEF_ERR_OPT, "Problem in AU code, line#%d:\n"	\
+		"using LAYOUT_ADD_METAFILE but no layout active\n"	\
+		"(forgot LAYOUT_BEGIN_FILE ?)", __LINE__);		\
+	    Exit_unimar(ERR_TERM);					\
+	}			    \
+	if(x.hasBeenInitialised	!= 2102)				\
+	{			    \
+	    Proc_err(DEF_ERR_OPT, "Problem in AU code, line#%d:\n"	\
+		"using LAYOUT_ADD_METAFILE with uninitialised struct\n"	\
+		"(forgot LAYOUT_METAFILE_DEFAULTS ?)", __LINE__);	\
+	    Exit_unimar(ERR_TERM);					\
+	}			    \
+	lpgWriteMetafile(lpgFileHandle, &x);
+
+#define LAYOUT_ADD_NMRTEXT(x) \
+	if(lpgFileHandle == 0)	    \
+	{			    \
+	    Proc_err(DEF_ERR_OPT, "Problem in AU code, line#%d:\n"	\
+		"using LAYOUT_ADD_NMRTEXT but no layout active\n"	\
+		"(forgot LAYOUT_BEGIN_FILE ?)", __LINE__);		\
+	    Exit_unimar(ERR_TERM);					\
+	}			    \
+	if(x.hasBeenInitialised	!= 2102)				\
+	{			    \
+	    Proc_err(DEF_ERR_OPT, "Problem in AU code, line#%d:\n"	\
+		"using LAYOUT_ADD_NMRTEXT with uninitialised struct\n"	\
+		"(forgot LAYOUT_NMRTEXT_DEFAULTS ?)", __LINE__);	\
+	    Exit_unimar(ERR_TERM);					\
+	}			    \
+	lpgWriteNMRText(lpgFileHandle, &x);
+
+
+/*********************************************/
+/* functions                                 */
+
+void lpgWriteText(FILE* fout, const LAYOUT_OBJ_TEXT* t)
+{
+	static const char* bTrue 	= "t";
+	static const char* bFalse 	= "f";
+	fprintf(fout, "ResizeableText %d (%d|%d) (%d|%d) 0 0 0 \"%s\" %g %s\n",
+		t->attributeId, 
+		(int)(t->xPos * 1000), (int)((t->yPos - t->yDim) * 1000), 
+		(int)(t->xDim * 1000), (int)(t->yDim * 1000), 
+		 t->content, t->fontSize * 35.2777777775,
+		(t->allowAutomaticFontResize != 0) ? bTrue : bFalse
+	);
+}
+
+void lpgWriteTitle(FILE* fout, const LAYOUT_OBJ_TITLE* t)
+{
+	static const char* bTrue 	= "t";
+	static const char* bFalse 	= "f";
+	fprintf(fout, "Title %d %d (%d|%d) (%d|%d) 0 0 0 %g %s\n", 
+		t->dataSetNumber > 0 ? t->dataSetNumber -1 : 0,
+		t->attributeId, 
+		(int)(t->xPos * 1000), (int)(t->yPos * 1000),
+		(int)(t->xDim * 1000), (int)(t->yDim * 1000),
+		t->fontSize * 35.2777777775,
+		(t->allowAutomaticFontResize != 0) ? bTrue : bFalse
+	);
+}
+
+void lpgWriteParameters(FILE* fout, const LAYOUT_OBJ_PARAMETERS* t)
+{
+	static const char* bTrue 	= "t";
+	static const char* bFalse 	= "f";
+	fprintf(fout, "Param %d %d (%d|%d) (%d|%d) 0 0 0 %g %s",
+		t->dataSetNumber > 0 ? t->dataSetNumber - 1: 0,
+		t->attributeId, 
+		(int)(t->xPos * 1000), (int)(t->yPos * 1000),
+		(int)(t->xDim * 1000), (int)(t->yDim * 1000),
+		t->fontSize * 35.2777777775,
+		(t->allowAutomaticFontResize != 0) ? bTrue : bFalse);
+
+	if(LAYOUT_VERSION_CREATE > 43)
+		fprintf(fout, " %s %s %s",
+		(t->showSignature != 0) ? bTrue : bFalse,
+		(t->warnMissingSignature != 0) ? bTrue : bFalse,
+		(t->warnInvalidSignature != 0) ? bTrue : bFalse);
+	
+	fprintf(fout, "\n");
+}
+
+void lpgWriteRectangle(FILE* fout, const LAYOUT_OBJ_RECTANGLE* r)
+{
+	fprintf(fout, "Rect %d (%d|%d) (%d|%d)\n", 
+		r->attributeId, 
+		(int)(r->xPos * 1000), (int)(r->yPos * 1000),
+		(int)((r->xPos + r->xDim) * 1000), (int)((r->yPos + r->yDim) * 1000)
+		);
+}
+
+void lpgWriteLine(FILE* fout, const LAYOUT_OBJ_LINE* l)
+{
+	fprintf(fout, "ArrowLine %d (%d|%d) (%d|%d) %g %d\n", 
+		l->attributeId, 
+		(int)(l->xBegin * 1000), (int)(l->yBegin * 1000),
+		(int)(l->xEnd * 1000), (int)(l->yEnd * 1000),
+		l->tipWidth * 10.0, l->arrowType);
+}
+
+void lpgWriteCircle(FILE* fout, const LAYOUT_OBJ_ELLIPSE* c)
+{
+	fprintf(fout, "Circle %d (%d|%d) (%d|%d)\n", 
+		c->attributeId, 
+		(int)(c->xCenter * 1000), (int)(c->yCenter * 1000),
+		(int)(c->xRadius * 1000), (int)(c->yRadius * 1000));
+}
+
+void lpgWriteMetafile(FILE* fout, const LAYOUT_OBJ_METAFILE* m)
+{
+	static const char* bTrue 	= "t";
+	static const char* bFalse 	= "f";
+	size_t i;
+	fprintf(fout, "NMRMeta %d %d (%d|%d) (%d|%d) %d %s %s %s \"",
+		m->dataSetNumber > 0 ? m->dataSetNumber -1 : 0,
+		19,	// GC for this object does not matter
+		(int)(m->xPos * 1000), (int)(m->yPos * 1000),
+		(int)((m->xPos + m->xDim) * 1000), (int)((m->yPos + m->yDim) * 1000),
+		m->angle,
+		(m->whenResizedKeepAspectRatio != 0) ? bTrue : bFalse,
+		(m->alwaysResizeGraphics  != 0) ? bTrue : bFalse,
+		bTrue );	// always file-based
+	for(i = 0; i < strlen(m->filename); i++)
+	{
+		if(m->filename[i] == '\\')		// double the backslashes in filename
+		{
+			fputc('\\', fout);
+			fputc('\\', fout);
+		}
+		else
+		    fputc(m->filename[i], fout);
+	}
+	fprintf(fout, "\"\n");		
+}
+
+void lpgWriteNMRText(FILE* fout, const LAYOUT_OBJ_NMRTEXT* m)
+{
+	static const char* bTrue 	= "t";
+	static const char* bFalse 	= "f";
+	size_t i;
+	fprintf(fout, "NMRText %d %d (%d|%d) (%d|%d) %d %d %d %g %s \"",
+		m->dataSetNumber > 0 ? m->dataSetNumber - 1 : 0,
+		m->attributeId,
+		(int)(m->xPos * 1000), (int)(m->yPos * 1000),
+		(int)(m->xDim * 1000), (int)(m->yDim * 1000),
+		0,	// angle
+		0,	// alignment
+		0,	// alignment
+		m->fontSize * 35.2777777775,
+		(m->allowAutomaticFontResize != 0) ? bTrue : bFalse);
+		
+	for(i = 0; i < strlen(m->filename); i++)
+	{
+		if(m->filename[i] == '\\')		// double the backslashes in filename
+		{
+			fputc('\\', fout);
+			fputc('\\', fout);
+		}
+		else
+		    fputc(m->filename[i], fout);
+	}
+	fprintf(fout, "\"\n");		
+}
+
+void lpgOpenLayoutFile(FILE** fout, const char* filename)
+{
+	*fout = fopen(filename, "wt");
+	if(*fout == NULL)
+	{
+	    Proc_err(DEF_ERR_OPT, "Cannot open layout file for writing:\n%s", filename);
+	    Exit_unimar(ERR_TERM);
+	}
+}
+
+void lpgWrite2Dobject(FILE* fout, const LAYOUT_OBJ_2D* o)
+{
+	const char* yes = "t";
+	const char* no  = "f";
+	int i;
+
+// Spec2DProjGraph 18 14 3 20 (1800|14400) (17600|1300) 0 12.67713 -0.63972 12.67713 -0.63972 16 20 -109114262 20 
+// -60619034 20 -33677241 20 -18709578 20 -10394210 20 -5774561 20 
+// -3208089 20 -1782272 20 1782272 20 3208089 20 5774561 20 
+// 10394210 20 18709578 20 33677241 20 60619034 20 109114262 ,
+//  1 1 0 0 f t t f f f (0|0) 0.1 0.1 10 10 f t "%.0f" "%.0f" 
+// 18 t 1 2000 2 f 0 0 1 2 t 2 2000 2 f 0 0 1 2 f f
+	fprintf(fout, "Spec2DProjGraph %d %d %d %d (%d|%d) (%d|%d) %d %g %g %g %g %d ",
+	o->axisAttributeId, o->gridAttributeId, 
+	o->dataSetNumber > 0 ? o->dataSetNumber - 1 : 0, o->curveAttributeId,
+	(int)((o->xDim + o->xPos) * 1000), (int)((o->yPos + o->yDim) * 1000),
+	(int)(o->xPos * 1000), (int)(o->yPos * 1000), 
+	o->angle, o->xMin, o->xMax, o->yMin, o->yMax, o->numContourLevels);
+	
+	for(i = 0; i < o->numContourLevels; i++)
+	    fprintf(fout, "%d %d ", o->contourLevelAttributeId[i], o->contourLevel[i]); 
+
+	fprintf(fout, "%d %d %d %d %s %s %s %s %s %s (%d|%d) %g %g %d %d ",
+	o->resetActionX, o->resetActionY, o->axisUnitX, o->axisUnitY, 
+	o->axisTop ? yes : no,
+	o->axisBottom ? yes : no, 
+	o->axisLeft ? yes : no, 
+	o->axisRight ? yes : no,
+	o->gridX ? yes : no, 
+	o->gridY ? yes : no,
+	(int)(o->offsetXAxis * 1000.0), (int)(o->offsetYAxis * 1000.0), 
+	o->tickDistanceXAxis, o->tickDistanceYAxis, 
+	o->labelStepXAxis, o->labelStepYAxis);
+
+	if(LAYOUT_VERSION_CREATE > 43)
+		fprintf(fout, "%s %s ",
+			o->keepTicksFixedXAxis ? yes : no,
+			o->keepTicksFixedYAxis ? yes : no);
+
+	fprintf(fout, "%s %s \"%s\" \"%s\" %d ",
+	o->scaleBoundingBox ? yes : no, 
+	o->drawBoxAroundCurve ? yes : no,
+	o->formatLabelsXAxis, o->formatLabelsYAxis,
+	o->projAttributeId);
+
+	if(o->projTop.enabled)
+	    fprintf(fout, "t %d %d %d %s %d %d %g %g ",
+		o->projTop.dataSetNumber > 0 ? o->projTop.dataSetNumber - 1 : 0,
+		(int)(o->projTop.size * 1000.0), o->projTop.resetAction, 
+		o->projTop.useRegionFile ? yes : no, 
+		o->projTop.regionType, 
+		o->projTop.scalingAfterResetType,
+		o->projTop.scalingAfterResetPercent / 100.0,
+		o->projTop.scalingAfterResetCm);
+	else
+	    fprintf(fout, "f ");
+	if(o->projLeft.enabled)
+	    fprintf(fout, "t %d %d %d %s %d %d %g %g ",
+		o->projLeft.dataSetNumber > 0 ? o->projLeft.dataSetNumber - 1 : 0,
+		(int)(o->projLeft.size * 1000.0), o->projLeft.resetAction, 
+		o->projLeft.useRegionFile ? yes : no, 
+		o->projLeft.regionType, 
+		o->projLeft.scalingAfterResetType,
+		o->projLeft.scalingAfterResetPercent / 100.0,
+		o->projLeft.scalingAfterResetCm);
+	else
+	    fprintf(fout, "f ");
+	if(o->projBottom.enabled)
+	    fprintf(fout, "t %d %d %d %s %d %d %g %g ",
+		o->projBottom.dataSetNumber > 0 ? o->projBottom.dataSetNumber - 1 : 0,
+		(int)(o->projBottom.size * 1000.0), o->projBottom.resetAction, 
+		o->projBottom.useRegionFile ? yes : no, 
+		o->projBottom.regionType, 
+		o->projBottom.scalingAfterResetType,
+		o->projBottom.scalingAfterResetPercent / 100.0,
+		o->projBottom.scalingAfterResetCm);
+	else
+	    fprintf(fout, "f ");
+	if(o->projRight.enabled)
+	    fprintf(fout, "t %d %d %d %s %d %d %g %g ",
+		o->projRight.dataSetNumber > 0 ? o->projRight.dataSetNumber - 1 : 0,
+		(int)(o->projRight.size * 1000.0), o->projRight.resetAction, 
+		o->projRight.useRegionFile ? yes : no, 
+		o->projRight.regionType, 
+		o->projRight.scalingAfterResetType,
+		o->projRight.scalingAfterResetPercent / 100.0,
+		o->projRight.scalingAfterResetCm);
+	else
+	    fprintf(fout, "f ");
+	fprintf(fout, "\n");
+}
+	
+
+void lpgWrite1Dobject(FILE* fout, const LAYOUT_OBJ_1D* o)
+{
+	const char* yes = "t";
+	const char* no  = "f";
+
+fprintf(fout, "Spec1DGraph %d %d %d %d %d %d %d (%d|%d) (%d|%d) %d %g %g %g "
+		"%g %s %d %d %g %g %g %g %s %g %s %g ",
+		o->axisAttributeId, o->gridAttributeId,
+		o->axisUnit,
+		o->dataSetNumber > 0 ? o->dataSetNumber - 1 : 0,
+		o->resetActionX, o->resetActionY,
+		o->curveAttributeId,
+		(int)((o->xDim + o->xPos) * 1000), (int)((o->yPos + o->yDim) * 1000),
+		(int)(o->xPos * 1000), (int)(o->yPos * 1000), 
+		o->angle,
+		o->xMin, o->xMax, 
+		o->yMin, o->yMax, 
+		o->useRegionFile ? yes : no, o->regionType, 
+		o->scalingAfterResetType, 		
+		o->scalingAfterResetPercent / 100.0,
+		o->scalingAfterResetCm,
+		o->integralYMin, o->integralYMax,
+		o->keepBaselineFixed ? yes : no, o->baselineOffsetPercent / 100.0,
+		o->keepIntegralsFixed ? yes : no, o->integralsOffsetPercent / 100.0);
+		
+if(LAYOUT_VERSION_CREATE >= 45)
+		fprintf(fout, "%s %g ",
+			o->setIntegralsHeightAfterReset ? yes : no,
+			o->integralsHeightAfterResetCm);
+
+fprintf(fout, "%s %s %s %s %s %s (%d|%d) %g %g %d %d ",
+		o->axisTop ? yes : no, 
+		o->axisBottom ? yes : no, 
+		o->axisLeft ? yes : no, 
+		o->axisRight ? yes : no,
+		o->gridX ? yes : no,
+		o->gridY ? yes : no,
+		(int)(o->offsetXAxis * 1000.0), (int)(o->offsetYAxis * 1000.0), 
+		o->tickDistanceXAxis, o->tickDistanceYAxis,
+		o->labelStepXAxis, o->labelStepYAxis);
+
+if(LAYOUT_VERSION_CREATE > 43)
+		fprintf(fout, "%s %s ",
+			o->keepTicksFixedXAxis ? yes : no,
+			o->keepTicksFixedYAxis ? yes : no);
+
+fprintf(fout, "%s %s \"%s\" \"%s\" %d %s %s \"%s\" %i ",
+		o->scaleBoundingBox ? yes : no, 
+		o->drawBoxAroundCurve ? yes : no,
+		o->formatLabelsXAxis, o->formatLabelsYAxis,
+		o->peaksAttributeId, o->showPeaks ? yes : no, o->showPeakMarks ? yes : no, o->peakFormat,
+		o->peaksUnit);
+		
+if(LAYOUT_VERSION_CREATE >= 45)
+		fprintf(fout, "%d ", o->peakAnnotationMode);
+	
+fprintf(fout, "%i %s %s \"%s\" %s %d %s\n", 
+		o->integralsAttributeId, o->showIntegralTraces ? yes : no, 
+		o->showIntegralLabels ? yes : no,
+		o->integralFormat,
+		o->showIntegralLabelsAboveAxis ? yes : no,
+		o->scalingAttributeId,
+		o->showScalingInfo ? yes : no);
+}
+
+static unsigned int lpgGlbLayoutGcCounter = 22;
+void lpgWriteGC(FILE* fout, const LAYOUT_ATTRIBUTES* a)
+{
+	static const char* bTrue 	= "t";
+	static const char* bFalse 	= "f";
+	const char* lineColorIsRGB = (a->lineColor == LayoutColorRGB) ? bTrue : bFalse;
+	const char* fillColorIsRGB = (a->fillColor == LayoutColorRGB) ? bTrue : bFalse;
+	fprintf(fout, "GC %d %d %d %d %d %s %d %d %d %d %d %d %s %d %d %d %g %d\n",
+		a->attributeId, 
+		a->lineColor + 16,
+		LAYOUT_R_VALUE(a->lineColorRGB), LAYOUT_G_VALUE(a->lineColorRGB), LAYOUT_B_VALUE(a->lineColorRGB),
+		lineColorIsRGB,
+		a->lineWidth, a->lineStyle, 
+		a->fillColor + 16,
+		LAYOUT_R_VALUE(a->fillColorRGB), LAYOUT_G_VALUE(a->fillColorRGB), LAYOUT_B_VALUE(a->fillColorRGB),
+		fillColorIsRGB,
+		a->fillStyle, a->fontType, a->fontType, 
+		a->fontSize * 423.33333 / 12.0, 0
+		);		
+}
+
+LAYOUT_ATTRIBUTES lpgLayoutAttributesStandardAxis;
+LAYOUT_ATTRIBUTES lpgLayoutAttributesStandardTitle;
+LAYOUT_ATTRIBUTES lpgLayoutAttributesStandardText;
+LAYOUT_ATTRIBUTES lpgLayoutAttributesStandardData;
+LAYOUT_ATTRIBUTES lpgLayoutAttributesStandardParameters;
+LAYOUT_ATTRIBUTES lpgLayoutAttributesStandardPeaks;
+LAYOUT_ATTRIBUTES lpgLayoutAttributesStandardIntegrals;
+LAYOUT_ATTRIBUTES lpgLayoutAttributesStandardContourLevel;
+LAYOUT_ATTRIBUTES lpgLayoutAttributesStandardGrid;
+LAYOUT_ATTRIBUTES lpgLayoutAttributesStandardScalingInfo;
+
+void lpgWriteLayoutHeader(FILE* fout, const LAYOUT_FORMAT* f)
+{
+static const int windowsGdiPaperIndex[] = {
+	8, 9, 11, 1, 5 };
+
+static const char* const paperName[] = {
+	"A3", "A4", "A5", "Letter", "Legal" };
+	const char* pn = NULL;
+	double left = f->marginLeft;
+	double right= f->marginRight;
+	double top	= f->marginTop;
+	double bottom = f->marginBottom;
+	LAYOUT_ATTRIBUTES a = LAYOUT_ATTRIBUTES_DEFAULTS;
+	size_t i;
+
+	if(f->orientation == LayoutPaperOrientationLandscape)
+	{
+		double fifth = left;
+		left	= top;
+		top		= right;
+		right 	= bottom;
+		bottom	= fifth;
+	}
+
+
+	{
+		char myvers[256];
+		char *dpnt;
+	     	double num;
+		getxwinvers(myvers);
+		dpnt = myvers;
+		while(*dpnt && !isdigit(*dpnt))
+			dpnt++;
+		num = atof(dpnt);
+		if(num <= 1.3 && LAYOUT_VERSION_CREATE > 43)
+			Proc_err(DEF_ERR_OPT, "Warning: Detected TOPSPIN version %.1f.\n\n"
+								  "This version of LAYOUT macro package creates layouts compatile with TOPSPIN 2.1\n"
+								  "by default. Include\n\n"
+								  "     #define LAYOUT_VERSION_CREATE 43\n\n"
+								  "as first line in your AU code to yield compatibility with TOPSPIN 1.x", num);
+	}
+
+	if(LAYOUT_VERSION_CREATE >= 45)
+		fputs("#!XWinPlot 4.5\n", fout);
+	else if(LAYOUT_VERSION_CREATE == 44)
+		fputs("#!XWinPlot 4.4\n", fout);
+	else
+		fputs("#!XWinPlot 4.3\n", fout);
+
+	if(f->usesDefaultPrinter == 1)
+	  {
+	    fprintf(fout, "PrinterSetup 0.6 \"lpr %%s\" \"gv -orientation=landscape %%s\" \"");
+	    pn = "PostScript";
+	  }
+	else
+	  {
+	    fprintf(fout, "PrinterSetup 0.6 \"lpr -P%s %%s\" \"gv -orientation=landscape %%s\" \"", f->printerName);
+	    pn = f->printerName;
+	  }
+
+
+	for(i = 0; i < strlen(pn); i++)
+	{
+		if(pn[i] == '\\')		// double the backslashes in printer name
+		{
+			fputc('\\', fout);
+			fputc('\\', fout);
+		}
+		else
+		    fputc(pn[i], fout);
+	}
+	fprintf(fout, "\" \"%s\" %d %g %g %g %g %d 1 1 1\n", 
+		paperName[f->size],
+		windowsGdiPaperIndex[f->size],
+		left,
+		right,
+		top,
+		bottom,
+		f->orientation
+		);
+
+	fputs("LayoutSetup 0.2 1\n", fout);
+	fputs("ObjectList\n", fout);
+	
+	if(LAYOUT_VERSION_CREATE >= 45)	
+		fputs("DispVersion 1.31\n", fout);
+	else if(LAYOUT_VERSION_CREATE == 44)	
+		fputs("DispVersion 1.28\n", fout);
+	else
+		fputs("DispVersion 1.26\n", fout);
+
+	// Create attributes that are used as defaults
+	a.attributeId = LAYOUT_ATTRIBUTES_ID_STANDARD_PARAMETERS;
+	a.lineColor = LayoutColorBlack;
+	a.fontType  = LayoutFontTypeCourierNormal;
+	a.fontSize  = 8;
+	lpgWriteGC(fout, &a);
+
+	a.attributeId = LAYOUT_ATTRIBUTES_ID_STANDARD_TEXT;
+	lpgLayoutAttributesStandardText = a;
+	lpgWriteGC(fout, &a);
+
+	a.attributeId = LAYOUT_ATTRIBUTES_ID_STANDARD_TITLE;
+	lpgLayoutAttributesStandardTitle = a;
+	a.fontType  = LayoutFontTypeCourierNormal;
+	a.fontSize  = 10;
+	lpgWriteGC(fout, &a);
+
+	a.attributeId = LAYOUT_ATTRIBUTES_ID_STANDARD_AXIS;
+	a.lineColor = LayoutColorBlue;
+	a.fontType  = LayoutFontTypeHelveticaBold;
+	a.fontSize = 12;
+	lpgLayoutAttributesStandardAxis = a;
+	lpgWriteGC(fout, &a);
+
+	a.attributeId = LAYOUT_ATTRIBUTES_ID_STANDARD_DATA;
+	a.lineColor = LayoutColorBlack;
+	lpgLayoutAttributesStandardData = a;
+	lpgWriteGC(fout, &a);
+
+	a.attributeId = LAYOUT_ATTRIBUTES_ID_STANDARD_PEAKS;
+	a.lineColor = LayoutColorGreen;
+	a.fontSize = 8;
+	a.fontType = LayoutFontTypeCourierNormal;
+	lpgLayoutAttributesStandardPeaks = a;
+	lpgWriteGC(fout, &a);
+
+	a.attributeId = LAYOUT_ATTRIBUTES_ID_STANDARD_INTEGRALS;
+	a.lineColor = LayoutColorRed;
+	a.fontSize = 8;
+	a.fontType = LayoutFontTypeHelveticaBold;
+	lpgLayoutAttributesStandardIntegrals = a;
+	lpgWriteGC(fout, &a);
+
+	a.attributeId = LAYOUT_ATTRIBUTES_ID_STANDARD_CONTOUR_LEVEL;
+	a.lineColor = LayoutColorBlue;
+	a.fontSize = 8;
+	a.fontType = LayoutFontTypeCourierNormal;
+	lpgLayoutAttributesStandardContourLevel = a;
+	lpgWriteGC(fout, &a);
+
+	a.attributeId = LAYOUT_ATTRIBUTES_ID_STANDARD_GRID;
+	a.lineColor = LayoutColorLightGray;
+	a.fontSize = 8;
+	a.fontType = LayoutFontTypeCourierNormal;
+	lpgLayoutAttributesStandardGrid = a;
+	lpgWriteGC(fout, &a);
+
+	a.attributeId = LAYOUT_ATTRIBUTES_ID_STANDARD_SCALING_INFO;
+	a.lineColor = LayoutColorGray;
+	a.fontSize = 8;
+	a.fontType = LayoutFontTypeHelveticaNormal;
+	lpgLayoutAttributesStandardScalingInfo = a;
+	lpgWriteGC(fout, &a);
+}
+
+void lpgCloseLayoutFile(FILE** fout)
+{
+	fclose(*fout);
+	*fout = NULL;
+}
+
+FILE *lpgFileHandle = NULL;
+static const LAYOUT_OBJ_TITLE		lpg_layout_obj_title_default_container		= lpg_LAYOUT_TITLE_DEFAULTS;
+static const LAYOUT_OBJ_1D			lpg_layout_obj_1d_default_container			= lpg_LAYOUT_1D_DEFAULTS;
+static const LAYOUT_OBJ_NMRTEXT		lpg_layout_obj_nmrtext_default_container	= lpg_LAYOUT_NMRTEXT_DEFAULTS;
+static const LAYOUT_OBJ_TEXT		lpg_layout_obj_text_default_container		= lpg_LAYOUT_TEXT_DEFAULTS;
+static const LAYOUT_OBJ_2D			lpg_layout_obj_2d_default_container			= lpg_LAYOUT_2D_DEFAULTS;
+static const LAYOUT_OBJ_PARAMETERS	lpg_layout_obj_parameters_default_container = lpg_LAYOUT_PARAMETERS_DEFAULTS;
+static const LAYOUT_OBJ_LINE		lpg_layout_obj_line_default_container		= lpg_LAYOUT_LINE_DEFAULTS;
+static const LAYOUT_OBJ_RECTANGLE	lpg_layout_obj_rectangle_default_container	= lpg_LAYOUT_RECTANGLE_DEFAULTS;
+static const LAYOUT_OBJ_METAFILE	lpg_layout_obj_metafile_default_container	= lpg_LAYOUT_METAFILE_DEFAULTS;
+static const LAYOUT_OBJ_ELLIPSE		lpg_layout_obj_ellipse_default_container	= lpg_LAYOUT_ELLIPSE_DEFAULTS;
+static const LAYOUT_FORMAT			lpg_layout_format_default_container			= lpg_LAYOUT_FORMAT_DEFAULTS;
+
+int brukerLpgAuFunction(char* curdat, char* cmd)
+{
+
+#endif // LAYOUT_PACKAGE_IMPL_INCLUDED
+

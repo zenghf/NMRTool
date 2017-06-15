@@ -1,0 +1,41 @@
+/* diffamp
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+A version of the AU program of Sue Pochapsky to run diffusion
+experiments. It increments a variable (typically gpz1).
+
+First determine good parameters for the experiment
+(i.e., times and gradient amplitudes for the first and last points
+in the experiment) in exp no. 1, set NS to a suitable number,
+and then start this au program.
+
+N. N. Yadav 30 August 2010
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+*/
+
+
+#include<math.h>
+
+int ne;
+double swp, sf, p1, p1start, p1inc;
+char parnam[10], parval[20], parinc[20];
+
+GETCURDATA
+(void)strcpy(parnam,"gpz1");
+GETSTRING("Enter parameter to modify: ",parnam);
+(void)strcpy(parval,"0");
+GETSTRING("Enter initial parameter value: ",parval);
+(void)strcpy(parinc,"5");
+GETSTRING("Enter parameter increment: ",parinc);
+ne=16; /*init.ne */
+GETINT("Enter# of experiments: ",ne);
+(void)sscanf(parval,"%lf",&p1start);
+p1=p1start;
+(void)sscanf(parinc,"%lf",&p1inc);
+TIMES(ne);
+  (void)sprintf(text,"%s %f",parnam,p1);
+  SETCURDATA
+  CPR_exec(text,1);
+  IEXPNO
+  p1+=p1inc;
+END
+QUITMSG("---AU program finished---")

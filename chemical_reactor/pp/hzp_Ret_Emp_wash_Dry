@@ -1,0 +1,87 @@
+;hzp_Trsf_Ret
+;Transfer and Return of the sample using parahydrogen polariser version v3
+
+
+;by default, the parahydrogen polarization experiments are performed in the following order
+;1: user loads the sample to the mixing chamber by clicking the button "load"
+;2: execute the pulse sequence
+;   a. use parahydrgoen to polarize the sample for a specifit time,
+;   b. then transfer the sample to the flowcell for NMR measurement;
+;   c. apply pulses, gradients and delays, and measure a spectrum
+;   d. transfer back the sample from the flowcell to the mixing chamber
+;3: user empties the mixing chamber by clicking the button "Empty" or "Empty save sample"
+; Haifeng Zeng 05/29/2012
+;$CLASS=HighRes
+;$DIM=1D
+;#define POL
+#include <Avance.incl>
+#include <Polariser.incl>
+
+define delay Time_IJP
+"Time_IJP=d40"
+define delay Time_EJP
+"Time_EJP=d42"
+define delay RD_time
+"RD_time=d45-(d40+d42)"
+
+1 ze
+
+	subr IPSO_CMD()						;force to ipso mode
+
+
+subr EJECT_PROBE() 				; transfer sample from probe to polariser.
+RD_time
+subr EJECT_POLARISER()    ; transfer sample from polariser to waste
+RD_time
+
+
+2 RD_time										;recovery time
+
+  Valid_P_trg2 			;test '1' stat of trigger2
+  Valid_P_trg1 			;test '1' stat of trigger1
+
+  setnmr3|31|30^29|28
+
+  Valid_N_trg2			;test '0' stat of trigger2
+  Valid_P_trg1 			;test '1' stat of trigger1
+  ACK_CMD			;IPSO acknowledge command
+  Valid_P_trg2 			;test '1' stat of trigger2
+  Valid_N_trg1			;test '0' stat of trigger1
+  END_ACK			;end of acknowledge IPSO
+  Valid_P_trg2 			;test '1' stat of trigger2
+  Valid_P_trg1 			;test '1' stat of trigger1
+  ACK_CMD			;IPSO acknowledge command
+
+subr EJECT_POLARISER() 
+
+ lo to 2 times l0
+
+subr EJECT_POLARISER() 
+
+  Valid_P_trg2 			;test '1' stat of trigger2
+  Valid_P_trg1 			;test '1' stat of trigger1
+
+  FLUSCH
+  
+  Valid_N_trg2			;test '0' stat of trigger2
+  Valid_P_trg1 			;test '1' stat of trigger1
+  ACK_CMD			;IPSO acknowledge command
+  Valid_P_trg2 			;test '1' stat of trigger2
+  Valid_N_trg1			;test '0' stat of trigger1
+  END_ACK			;end of acknowledge IPSO
+  Valid_P_trg2 			;test '1' stat of trigger2
+  Valid_P_trg1 			;test '1' stat of trigger1
+  ACK_CMD			;IPSO acknowledge command
+
+
+
+
+exit
+
+
+;d1 : relaxation delay; set to very short for hyperpolarisation experiments 
+;d40: delay for loading sample from the polariser to the flowcell
+;d42: delay for returning sample from the flowcell to the polarizer
+;d44: delay for emptying sample from the polarizer to  the vial
+;d45: delay betweem scans
+;l0 : accumulate L0 scans; re-polarising between scans

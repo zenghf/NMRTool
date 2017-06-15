@@ -1,0 +1,354 @@
+/******* -*-C++-*- **********************************************/
+/*	Short Description :					*/
+/*	This file contains utility functions for T1 AU programs.*/
+/****************************************************************/
+/*	Keywords :						*/
+/*	deconvolution of T1 or T2 experiments			*/
+/****************************************************************/
+/*	Author(s) :						*/
+/*	Name		: Mike Engelhardt			*/
+/*	Organisation	: Bruker BioSpin GmbH			*/
+/*	Email		: michael.engelhardt@bruker.de		*/
+/****************************************************************/
+/*
+$Id: t1util,v 1.10 2007/12/05 16:34:12 ge Exp $
+*/
+
+/****************************************************************/
+/*	readvdlist		3.2.1997 ENG			*/
+/****************************************************************/
+/*	This function reads (or generates) the x-coordinates    */
+/*	for the points calculated by the deconvolution of the   */
+/*	T1/T2 experiment.					*/
+/****************************************************************/
+
+int readvdlist (const char* curdat, int numpoints, double* vdlist)
+{
+  char vdpath[PATH_MAX],listtype[64],vdlistname[64];
+  char inputline[120];
+  char *reps;			/* return value of sscanf */
+  char *rep;			/* return pointer of fgets */
+  double curdw, curinc, dwellt; /* for increment calculation */
+  double swp, sfo1;		/* buffer for value from list file */
+  int incr, i;			/* increment number between rows */
+  int linecount;		/* count lines of v?list file */
+  int startr;			/* row to start with */
+  float incv;			/* increment value between rows */
+  float startv;			/* start increment for row startr */
+  FILE *fplist;			/* file pointer to list file */
+  static const char unitc[4]=
+  {
+    's','m','u','\0'
+  };
+  static const double unitf[4] = 
+  {
+    1.0,1.0e-3,1.0e-6,1.0
+  };
+
+  FETCHT1PAR ("LISTTYP",listtype)
+
+  if ( !strcmp (listtype,"auto") )
+  {
+    /**** auto generation of delay list with numpoints points. ****/
+
+    FETCHT1PAR ("INC",&incr)
+    FETCHT1PAR ("LISTINC",&incv)
+    FETCHT1PAR ("START",&startr)
+    FETCHT1PAR ("X_START",&startv)
+    curinc = incr * incv;
+    for (i=0, curdw=startv+startr*incv; i<numpoints; i++, curdw+=curinc)
+      *vdlist++ = curdw;
+  }
+  else if ( !strcmp (listtype,"dw") )
+  {
+    FETCHT1PAR ("INC",&incr)
+    FETCHT1PAR ("START",&startr)
+    FETCHPARS ("SW",&swp)
+    FETCHPARS ("SFO1",&sfo1)
+    dwellt = incr / (swp * sfo1 * 2.0);
+    for (i=0, curdw=startr*dwellt/incr; i<numpoints; i++, curdw+=dwellt)
+      *vdlist++ = curdw;
+  }
+  else
+  {
+    strcpy(vdpath, ACQUPATH(listtype));
+    if (access(vdpath,F_OK))
+    {
+      if (strcmp(listtype,"vdlist") == 0)
+      {
+	FETCHPARS("VDLIST",vdlistname)
+	if (getParfileDirForRead(vdlistname, VD_DIRS, vdpath) < 0)
+	{
+	  Proc_err(DEF_ERR_OPT, "%s file %s: %s\n"
+				"Please check parameter LISTTYP.",
+				listtype, vdlistname, vdpath);
+	  return -1;
+	}
+      }
+      else if (strcmp(listtype,"vplist") == 0)
+      {
+	FETCHPARS("VPLIST",vdlistname)
+	if (getParfileDirForRead(vdlistname, VP_DIRS, vdpath) < 0)
+	{
+	  Proc_err(DEF_ERR_OPT, "%s file %s: %s\n"
+				"Please check parameter LISTTYP.",
+				listtype, vdlistname, vdpath);
+	  return -1;
+	}
+      }
+      else if ( !strcmp (listtype,"vclist") )
+      {
+	FETCHPARS("VCLIST",vdlistname)
+	if (getParfileDirForRead(vdlistname, VC_DIRS, vdpath) < 0)
+	{
+	  Proc_err(DEF_ERR_OPT, "%s file %s: %s\n"
+				"Please check parameter LISTTYP.",
+				listtype, vdlistname, vdpath);
+	  return -1;
+	}
+      }
+      else
+      {
+	Proc_err(DEF_ERR_OPT, "list file : %s not found.\n"
+			      "Please check parameter LISTTYP.", listtype);
+	return -1;
+      }
+    }
+    if ( (fplist = fopen(vdpath,"r")) == NULL )
+    {
+      Proc_err(DEF_ERR_OPT, "Cannot open %s for reading", vdpath);
+      return -1;
+    }
+    linecount = 0;
+    do
+    {
+      do
+      {
+        rep = fgets(inputline,sizeof(inputline),fplist); /* get each line */
+      } while (rep && (inputline[0] == '#'));	     /* skip comments */
+      if (rep != NULL)
+      {
+        *vdlist = parsnum(inputline,&reps);
+        if (reps != inputline)
+        {
+	  i = 0;
+	  while (unitc[i] != '\0')
+	  {
+	    if (*reps == unitc[i])		       /* found match */
+	    {
+	      *vdlist *= unitf[i];
+	      break;
+	    }
+	    i++;
+	  }
+	  if (unitc[i] == '\0')      /* no match found, use default */
+	  {
+	    *vdlist *= unitf[i];
+	  }
+	  vdlist++;
+	  linecount++;
+        }
+      }
+    } while ( (rep != NULL) && (linecount < numpoints) );
+    (void)fclose(fplist);
+  }
+  return 0;
+}
+
+/****************************************************************/
+/*	getnumpeaks		7.1.1997 ENG			*/
+/****************************************************************/
+/*	This function reads the number of peaks from the	*/
+/*	peaklist file and generates an baslpnts file based	*/
+/*	on the peaks defined in the peaklist file.		*/
+/****************************************************************/
+
+int getnumpeaks (const char* curdat, int copproc, const char* peaklist)
+{
+  char resultfil2[PATH_MAX], resultfile[PATH_MAX], inputline[PATH_MAX];
+  double sfval, swid, ddummy, poin;
+  float offset;
+  int siz, numpeaks, wehavehz;
+  FILE *fptr1, *fptr2;
+  int save_procno = procno;
+
+  FETCHPARS("SI",&siz)
+  FETCHPARS("SF",&sfval)
+  FETCHPARS("SW_p",&swid)
+  FETCHPARS("OFFSET",&offset)
+
+  /* open baslpnts file */
+
+  procno = copproc;
+  strcpy(resultfil2, PROCPATH("baslpnts"));
+  procno = save_procno;
+  if ( (fptr2 = fopen(resultfil2,"wt")) == NULL )
+  {
+    Perror(DEF_ERR_OPT,resultfil2);
+    ABORT
+  }
+
+  /* first entry in baslpnts file is size of spectrum (or row) */
+
+  (void) fprintf (fptr2,"%d\n",siz);
+
+  /* read number of peaks to be deconvolved */
+
+  if (getParfileDirForRead(peaklist, PEAKLIST_DIRS, resultfile) < 0)
+  {
+    Proc_err(DEF_ERR_OPT, "%s: %s", peaklist, resultfile);
+    ABORT
+  }
+
+  if ( (fptr1 = fopen(resultfile,"r")) == NULL )
+  {
+    Perror(DEF_ERR_OPT,resultfile);
+    ABORT
+  }
+
+  /* read first line to determine whether we have Hz or ppm */
+
+  fgets(inputline,sizeof(inputline),fptr1);
+  if ( (inputline[0] == 'H') || (inputline[0] == 'h') )
+    wehavehz = 1;
+  else
+    wehavehz = 0;
+
+  /* read the rest of the file */
+
+  numpeaks = 0;
+  while (fgets(inputline,sizeof(inputline),fptr1))
+  {
+    if ( inputline[0] == '#' )
+    continue;
+    else
+    {
+      sscanf(inputline,"%lf",&ddummy);
+      numpeaks++;
+      if ( wehavehz )
+        poin = ((offset*sfval)-ddummy)*siz/swid;
+      else
+        poin = (offset-ddummy)*sfval*siz/swid;
+      (void) fprintf (fptr2,"%d %f\n",
+			(int)poin,offset-(poin*swid/(sfval*siz)));
+    }
+  }
+  fclose (fptr1);
+  fclose (fptr2);
+  return numpeaks;
+}
+
+/****************************************************************/
+/*	writet1elim		7.1.1997 ENG			*/
+/****************************************************************/
+/*	This function writes the t1elim file to disk.		*/
+/****************************************************************/
+
+int writet1elim (const char* curdat, int copproc, int numpeaks, int numpoints)
+{
+  char resultfile[PATH_MAX], *elmat;
+  int esiz, ret;
+  FILE *fp;
+  int save_procno = procno;
+
+  procno = copproc;
+  strcpy(resultfile, PROCPATH("t1elim"));
+  procno = save_procno;
+  esiz = numpeaks*numpoints*2;
+  if ( (elmat = (char*)calloc(esiz, sizeof(char))) == NULL )
+  {
+    Proc_err(DEF_ERR_OPT,"decon_t1 : No memory for elim matrix");
+    ABORT
+  }
+  if ( (fp = fopen (resultfile, "wb")) == 0 )
+  {
+    Perror (DEF_ERR_OPT,resultfile);
+    ABORT
+  }
+  ret = fwrite (elmat,sizeof(char),esiz,fp);
+  if (ret < 0)
+  {
+    Perror (DEF_ERR_OPT,resultfile);
+    ABORT
+  }
+  (void) fclose(fp);
+  free (elmat);
+  return 1;
+}
+
+/****************************************************************/
+/*	writet1disp		7.1.1997 ENG			*/
+/****************************************************************/
+/*	This function writes the t1_disp file to disk.		*/
+/****************************************************************/
+
+struct peak {
+	int psta;
+	float padd;
+	float pint;
+	int pend;
+		};
+
+int writet1disp (const char* curdat, int copproc, int numpeaks, int numpoints,
+		 double* xcoord, struct peak* int_records)
+{
+  char resultfile[PATH_MAX];
+  float tmp;
+  int ret, jjj;
+  FILE *fptr1;
+  int save_procno = procno;
+
+  procno = copproc;
+  strcpy(resultfile, PROCPATH("t1_disp"));
+  procno = save_procno;
+  if ( (fptr1 = fopen(resultfile,"wb")) == NULL )
+  {
+    Perror(DEF_ERR_OPT,resultfile);
+    ABORT
+  }
+  tmp = 1.0; /* first entry in t1_disp file is colour */
+  ret = fwrite (&tmp, sizeof (float), 1, fptr1);
+  if (ret != 1)
+  {
+    Perror(DEF_ERR_OPT,resultfile);
+    ABORT
+  }
+  tmp = (float)numpoints; /* 2nd entry in t1disp file is no. of peaks */
+  ret = fwrite (&tmp, sizeof (float), 1, fptr1);
+  if (ret != 1)
+  {
+    Perror(DEF_ERR_OPT,resultfile);
+    ABORT
+  }
+  int_records = int_records+2;  /* reset pointer to first peak info */
+  for ( jjj = 1; jjj <= numpoints; jjj++ )
+  {
+    tmp = (float)*xcoord++;  /* for each point x-coor. then y-coor. */
+    ret = fwrite (&tmp, sizeof (float), 1, fptr1);
+    if (ret != 1)
+    {
+      Perror(DEF_ERR_OPT,resultfile);
+      ABORT
+    }
+    tmp = int_records->pint;
+    ret = fwrite (&tmp, sizeof (float), 1, fptr1);
+    if (ret != 1)
+    {
+      Perror(DEF_ERR_OPT,resultfile);
+      ABORT
+    }
+    int_records = int_records + numpeaks + 2;
+  }
+  tmp = 0.0; /* finally, write a terminator pair of zeroes */
+  for ( jjj = 0; jjj < 2; jjj++ )
+  {
+    ret = fwrite (&tmp, sizeof (float), 1, fptr1);
+    if (ret != 1)
+    {
+      Perror(DEF_ERR_OPT,resultfile);
+      ABORT
+    }
+  }
+  (void) fclose (fptr1);
+  return 1;
+}

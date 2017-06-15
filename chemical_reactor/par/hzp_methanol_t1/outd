@@ -1,0 +1,16 @@
+##TITLE= Parameter file, TOPSPIN		Version 3.0
+##JCAMPDX= 5.0
+##DATATYPE= Parameter Values
+##NPOINTS= 1	$$ modification sequence number
+##ORIGIN= Bruker BioSpin GmbH
+##OWNER= nmrsu
+$$ 2010-10-01 14:10:40.077 +0200  nmrsu@CZC0220Z5K
+$$ /opt/topspin3.0/exp/stan/nmr/par/user/2hcharge/outd
+$$ process /opt/topspin3.0/prog/mod/edparproc
+##$CURPLOT= <HP_LaserJet_P2055>
+##$CURPRIN= <$HP_LaserJet_P2055>
+##$DFORMAT= <normdp>
+##$LAYOUT= <+/1D_H.xwp>
+##$LFORMAT= <normlp>
+##$PFORMAT= <normpl>
+##END=

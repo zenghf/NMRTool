@@ -1,0 +1,245 @@
+/********************-*-C++-*-****************************************
+*
+* $Source: /sc/CvsTree/sc/gen/src/prg/makeau/inc/deptanalysis,v $
+*
+* Copyright (c) 1995
+* BRUKER ANALYTISCHE MESSTECHNIK GMBH
+* D-76287 Rheinstetten, Germany
+*
+* All Rights Reserved
+*
+*
+* $Id: deptanalysis,v 1.2 2007/12/19 10:29:00 ge Exp $
+*
+********************************************************************
+*/
+/*****	loading of arrays for dept analysis			*******/
+/*	depthead must be included, too.
+	For this macro the following strings must contain
+	path:		path to broad band peak picking file
+	dept90:		path to dept 90 peak picking file
+	dept135:	path to dept 135 peak picking file	      */
+{
+    int loop;
+    isave = readPeakList(path);
+    if (isave <= 0)
+    {
+	Proc_err(DEF_ERR_OPT,"error reading peaklist.xml from %s:\n%s",
+		 path, getPeakError());
+	STOP;
+    }
+    for (loop=0; loop < DEPTSZ && loop < isave; loop++)
+    {
+	BB[loop] = getPeakFreqPPM(loop);
+	FO[loop] = getPeakAddress(loop);
+    }
+    freePeakList();
+
+    is90 = readPeakList(dept90);
+    if (is90 < 0)
+    {
+	Proc_err(DEF_ERR_OPT,"error reading peaklist.xml from %s:\n%s",
+		 dept90, getPeakError());
+	STOP;
+    }
+    pmax=0;
+    for (loop=0; loop < DEPTSZ && loop < is90; loop++)
+    {
+	D90[loop] = getPeakFreqPPM(loop);
+	I90[loop] = getPeakIntensity(loop);
+	if(I90[loop] > pmax)
+	    pmax = I90[loop];
+    }
+    freePeakList();
+
+    is135 = readPeakList(dept135);
+    if (is135 < 0)
+    {
+	Proc_err(DEF_ERR_OPT,"error reading peaklist.xml from %s:\n%s",
+		 dept135, getPeakError());
+	STOP;
+    }
+    pmax1 = 0;
+    for (loop=0; loop < DEPTSZ && loop < is135; loop++)
+    {
+	D135[loop] = getPeakFreqPPM(loop);
+	I135[loop] = getPeakIntensity(loop);
+	if(I135[loop] > pmax1)
+	    pmax1 = I135[loop];
+    }
+    freePeakList();
+}
+
+/* analyse dept spectra */
+{
+    int	i90,	i135,	f135,	f90;
+    float	delta,	diff = 0, diff1;
+
+    i135=1;
+    i90=1;
+    i=1;
+    diff1=0.2;
+
+    for(loopcount1=0; loopcount1 < isave; loopcount1++)
+    {
+	if(i==1)
+	{
+	    diff=(BB[i]-BB[i+1]);
+	}
+	else if (i==isave)
+	{
+	    diff1=(BB[i-1]-BB[i]);
+	}
+	else
+	{
+	    diff=(BB[i]-BB[i+1]);
+	    diff1=(BB[i-1]-BB[i]);
+	}
+	if (diff1<diff)
+	{
+	    diff=diff1;
+	}
+	if (diff>0.2)
+	{
+	    delta=0.2;
+	}
+	else
+	{
+	    delta=diff/2;
+	}
+	f90=0;
+	f135=0;
+	i135=1;
+	i90=1;
+	/* Proc_err(DEF_ERR_OPT,"pmax1= %f fakt = %f",pmax1,fakt); */
+	for(loopcount2=0; loopcount2< is135; loopcount2++)
+	{
+	    if(fabs(BB[i]-D135[i135])<delta && fabs(I135[i135])>pmax1*fakt)
+	    {
+		f135=1;
+		break;
+	    }
+	    i135=i135+1;
+	}
+	for(loopcount3=0; loopcount3< is90; loopcount3++)
+	{
+	    if(fabs(BB[i]-D90[i90])<delta && fabs(I90[i90])>pmax*fakt) 
+	    {
+		f90=1;
+		break;
+	    }
+	    i90=i90+1;
+	}
+	if(f135==1)
+	{
+	    if(I135[i135]<0)
+	    {
+		M[i] = 'T';
+	    }
+	    else if (f90==1)
+	    {
+		if(fabs(I90[i90])>pmax*fakt)
+		{
+		    M[i] = 'D';
+		}
+		else
+		{
+		    M[i] = 'Q';
+		}
+	    }
+	    else
+	    {
+		M[i] = 'Q';
+	    }
+	} 
+	else if(f90==1)
+	{
+	    M[i] = 'U';
+	}
+	else
+	{
+	    M[i] = 'S';
+	}
+	i=i+1;
+    }
+}
+/*****	Clean labels of regions, excluded by region file in lists/scl */
+/*	Before this macro deptanal must be included		      */
+
+{
+    char prosol[64], path2[PATH_MAX];
+
+    (void)sprintf(prosol,"%s.%s",nucleus,solvent);
+    if (getParfileDirForRead(prosol, SCL_DIRS, path2) < 0)
+    {
+	Proc_err(DEF_ERR_OPT,"Solvent file %s: %s", prosol, path2);
+    }
+    else if ((fptr=fopen(path2,"rt")) == 0)
+    {
+	Proc_err(DEF_ERR_OPT,"Cannot open %s for reading", path2);
+    }
+    else
+    {
+	float	U[10], L[10];
+	int	loop;
+	int	ilim = 0;
+
+	fgets(a,sizeof(a),fptr);
+	i=1;
+	for (loop=0; loop < 10; loop++)
+	{
+	    if(fscanf(fptr,"%f %f",&U[i],&L[i])<2)
+	    {
+		ilim=i-1;
+		break;
+	    }
+	    i++;
+	}
+	fclose(fptr);
+	i=1;
+	for (loop=0; loop < isave; loop++)
+	{
+	    int loop2;
+	    int ic1 = 1;
+
+	    for (loop2=0; loop2 < ilim; loop2++)
+	    {
+		if (BB[i] < L[ic1] && BB[i] > U[ic1+1])
+		    M[i] = ' ';
+		ic1++;
+	    }
+	    i++;
+	}
+    }
+}
+/*******************************************************************
+** Write result of dept analysis into file 
+* for peak picking on plot.		
+********************************************************************
+*/
+
+{
+    int	no;
+    char lblform[9];
+
+
+    strcpy(path, PROCPATH("labels"));
+    if (!(fptr = fopen(path,"wt")))
+    {
+	Proc_err(DEF_ERR_OPT,"Cannot open the labels file\n"
+		 "%s\n"
+		 "for writing!\n",path);
+	return -1;
+    }
+    no = 0;
+    for (i=1; i<=isave; i++)	
+	if(M[i]!=' ')	
+	    no++;
+    fprintf(fptr,"%d\n",no);
+
+    sprintf(lblform,"%%.%dg%%c\n", 24 * 3 / 10 + 1);	  /* 24 was FSIGNIF */
+    for(i=1; i<=isave; i++)
+	if (M[i]!=' ') 
+	    fprintf(fptr, lblform, FO[i], M[i]);
+    fclose(fptr);
+}

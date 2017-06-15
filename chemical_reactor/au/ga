@@ -1,0 +1,166 @@
+/*** ^^A -*-C++-*- **********************************************/
+/*	setpolmag		          			*/
+/****************************************************************/
+/*	Short Description :					*/
+/*	Sets the magnetic field for the polariser from a	*/
+/*      value set by the user				        */
+/****************************************************************/
+/*	Keywords :						*/
+/*	polariser magnetic field				*/
+/****************************************************************/
+/*	Description/Usage :					*/
+/*	This AU program allows the magnetic field of the 	*/
+/*	parahydrogen polariser to be set from the topspin	*/
+/*	command line rather than a terminal. The terminal 	*/
+/*	window with connection to the polariser should be 	*/
+/*	closed prior to the value being set			*/
+/*		xau ga <field value>				*/
+/****************************************************************/
+/*	Author(s) :						*/
+/*	Name		: Ralph Adams				*/
+/*	Organisation	: University of York, UK		*/
+/*	Email		: rwa104@york.ac.uk			*/
+/****************************************************************/
+/*	Name		Date		Modification:		*/
+/*	rwa		091109		created			*/
+/*	hb		20111122	Adapted			*/
+/****************************************************************/
+/*
+$Id: ga,v 1.12 2010/11/21 15:03:17 wem Exp $
+*/
+
+
+AUERR = setpolmag(curdat, cmd);
+QUIT
+
+#include <inc/exptUtil>
+#include <inc/polariseUtil.vs3>
+
+int setpolmag(const char* curdat, const char* cmd)
+{
+
+    TTY_DEVICE bphp;
+    char statusline[128], message[128];
+    int  ret;
+    int i = 0, timeout = 40;
+    char gaSet[128], debugmessage[128], polFieldSigned[128];
+    char constantVariable[28];
+    float polField, maxPolField=150;
+    int constantVariableIndex = 31;
+    
+    FETCHPAR( "CNST 31", &polField );
+    if (*cmd == 0)
+    {
+	/* The polariser field value for the polariser is set from CNST31 */
+	/* GETSTRING("Enter pulse program constant name (Ex. CNST 31). 
+	  This defines field value for the polariser: ", constantVariable);*/
+	GETINT("Enter number of pulse program constant name CNST.\nThis defines field value for the polariser: ", 
+	       constantVariableIndex);
+	sprintf(constantVariable, "CNST %d", constantVariableIndex);
+	FETCHPAR( constantVariable, &polField );
+
+	GETFLOAT("Enter Polariser Field : ",polField);
+    }
+    else { if (1 != sscanf(cmd, "%f", &polField)) { STOPMSG("illegal input"); }; }
+    
+    if ( fabs(polField) > maxPolField)
+    {
+	sprintf(message, "Polariser Field (%f) Out Of Range\nLimit is %f",polField,maxPolField);
+	STOPMSG( message ); 
+    }
+
+    /* Define I/O for polariser via USB port */
+    /* Try and open the USB port. Proceed only when successful */
+  
+    if (openbphp(&bphp) < 0)      /* openUSBPort(O_RDWR); ERRORABORT  */
+    {
+	Proc_err(DEF_ERR_OPT, "ga: openbphp < 0");
+	return -1;
+    }
+
+
+    SETCURDATA
+    STOREPAR(constantVariable, polField);     /* STOREPAR("CNST 31",polField); */
+    if (DEBUG==1)
+    {
+	(void)sprintf( message, "Set %s to %.2f\n", constantVariable, polField );
+	printf( message );
+    }
+    if (DEBUG==1)
+    {
+	(void)sprintf( message, "Created all Data sets for acquisition, finished with CNST %d of %.2f\n",
+		       constantVariableIndex, polField);
+	printf( message );
+    }
+    /* Get field value for polariser; construct polariser command */
+    FETCHPAR(constantVariable, &polField);    /* orig:   FETCHPAR( "CNST 31", &polField ); */
+    (void)sprintf( polCmnd, "ga%.2f", polField);
+
+    if (DEBUG==1)
+    {
+	(void)sprintf( message, "\nTaken value of %.2f from CNST %d\n", polField, constantVariableIndex);
+	printf( message );
+	(void)sprintf( message, "Set the command to be sent to the polariser ( %s ) for the field %.2f\n", polCmnd, polField);
+	printf( message );
+    }
+
+   /* Set field on polariser and check value is set before proceeding */
+   /* gaSet is the value of the field as read from the polariser */ 
+     
+    sprintf(polFieldSigned, "%s OK", polCmnd);  /*sprintf(polFieldSigned, "%s%d\n\0", polPM, round(polField));*/
+
+    /* Terminate command string with a Carriage Return character */
+    strcat(polCmnd,"\r");
+      
+
+    if(DEBUG==1)
+    {
+	(void)sprintf( debugmessage, "\n Value to compare with response from polariser set to %s\n",polFieldSigned);
+	printf(debugmessage);
+    }
+
+    /* while((strcmp(gaSet,polFieldSigned) != 0) && ( i <= timeout )){ */
+    while((strncmp(gaSet,polFieldSigned, strlen(polFieldSigned)-3) != 0) && ( i <= timeout ))
+    {
+    	(void) sprintf(statusline,"Setting polariser field to %.2f Gauss", polField);
+        Show_status(statusline);
+	
+        /* sendCmnd( usb, polCmnd, polResponse ); */
+	if ( (ret = writeCmnd( &bphp, polCmnd)) <0 )    /* write to polarizer */
+	    return -1;
+	  
+	if (readResponse(&bphp, polResponse) <0)
+	    return -1;
+
+
+	(void)sprintf(gaSet, "%s", polResponse);
+	if(DEBUG==1)
+	{
+	    (void)sprintf( debugmessage, "\nComparing value read from polariser: %s with value sent: %s expected: %s",
+			   gaSet, polCmnd, polFieldSigned); 
+	    printf(debugmessage);
+	}
+	i++;
+
+	if((DEBUG==1)&&(i==timeout)) 
+	{
+	    (void)sprintf( debugmessage, "\nFailed to set polariser to field %s after %d attempts", 
+			   polCmnd , timeout); printf(debugmessage);
+	}
+	if (i == timeout ) 
+	{
+	    (void)sprintf( message,"Failed to set field of polariser\n%s ",polCmnd );
+	    STOPMSG( message );
+	}
+    }
+    if(DEBUG==1)
+    {
+	(void)sprintf( debugmessage, "\nPolariser Field Set Successfully\n");
+	printf(debugmessage);
+    }
+    
+    (void) sprintf(statusline,"Successfully set polariser field value to %.2f Gauss", polField);
+    Show_status(statusline);
+  
+    return 0;
+}

@@ -1,0 +1,149 @@
+;selmlzf
+;avance-version (10/12/07)
+;1D homonuclear Hartman-Hahn transfer using 
+;   MLEV17 sequence for mixing
+;   selective excitation with a shaped pulse
+;   z-filter
+;
+;C.J. Bauer, R. Freeman, T. Frenkiel, J. Keeler & A.J. Shaka,
+;   J. Magn. Reson. 58, 442 (1984)
+;H. Kessler, H. Oschkinat, C. Griesinger & W. Bermel,
+;   J. Magn. Reson. 70, 106 (1986)
+;A. Bax & D.G. Davis, J. Magn. Reson. 65, 355-360 (1985)
+;
+;$CLASS=HighRes
+;$DIM=1D
+;$TYPE=
+;$SUBTYPE=
+;$COMMENT=
+
+
+#include <Avance.incl>
+#include <Delay.incl>
+
+
+"p5=p6*.667"
+"p7=p6*2"
+"d11=30m"
+"d13=4u"
+define delay halfd1
+"halfd1 = d1*0.5"
+
+"SCALEF=p7*2/p5"
+"FACTOR1=((d9-p17*2)/(p6*64+p5))/SCALEF"
+"l1=FACTOR1*SCALEF"
+
+
+#   ifdef CALC_SPOFFS
+"spoff1=bf1*(cnst21/1000000)-o1"
+#   else
+#   endif /*CALC_SPOFFS*/
+
+
+1 ze
+2 30m pl9:f1
+  d13 fq=cnst21:f1
+  halfd1 cw:f1 ph29
+  d13 do:f1
+  d13 fq=cnst20:f1
+  halfd1 cw:f1 ph29
+  d13 do:f1
+  d13 fq=0:f1
+
+  4u pl0:f1
+  p11:sp1:f1 ph1:r
+  d13
+  d14 pl10:f1
+  (p17 ph26)
+						;begin MLEV17
+4 (p6 ph22 p7 ph23 p6 ph22)
+  (p6 ph24 p7 ph25 p6 ph24)
+  (p6 ph24 p7 ph25 p6 ph24)
+  (p6 ph22 p7 ph23 p6 ph22)
+  (p6 ph24 p7 ph25 p6 ph24)
+  (p6 ph24 p7 ph25 p6 ph24)
+  (p6 ph22 p7 ph23 p6 ph22)
+  (p6 ph22 p7 ph23 p6 ph22)
+  (p6 ph24 p7 ph25 p6 ph24)
+  (p6 ph22 p7 ph23 p6 ph22)
+  (p6 ph22 p7 ph23 p6 ph22)
+  (p6 ph24 p7 ph25 p6 ph24)
+  (p6 ph22 p7 ph23 p6 ph22)
+  (p6 ph22 p7 ph23 p6 ph22)
+  (p6 ph24 p7 ph25 p6 ph24)
+  (p6 ph24 p7 ph25 p6 ph24)
+  (p5 ph23)
+  lo to 4 times l1 
+						;end MLEV17
+  (p17 ph26) 
+  d13
+  (p6 ph2)                     
+  vd
+  (p6 ph3) 
+  go=2 ph31
+  30m mc #0 to 2 F0(ivd & zd)
+exit
+
+
+ph1=0 2
+ph2=0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+    2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2
+ph3=0 0 0 0 2 2 2 2 1 1 1 1 3 3 3 3
+ph22=0 0 2 2
+ph23=1 1 3 3
+ph24=2 2 0 0
+ph25=3 3 1 1
+ph26=1 1 3 3
+ph29=0
+ph31=0 2 0 2 2 0 2 0 1 3 1 3 3 1 3 1
+     2 0 2 0 0 2 0 2 3 1 3 1 1 3 1 3
+
+
+;pl0 : 0W
+;pl10: f1 channel - power level for TOCSY-spinlock
+;sp1: f1 channel - shaped pulse
+;p1 : f1 channel -  90 degree high power pulse
+;p5 : f1 channel -  60 degree low power pulse
+;p6 : f1 channel -  90 degree low power pulse
+;p7 : f1 channel - 180 degree low power pulse
+;p11: f1 channel -  90 (or 270) degree shaped pulse
+;p17: f1 channel - trim pulse                             [2.5 msec]
+;d1 : relaxation delay; 1-5 * T1
+;d9 : TOCSY mixing time
+;d11: delay for disk I/O                                  [30 msec]
+;d13: short delay                                         [4 usec]
+;d14: delay for evolution after shaped pulse: 
+;               for 90 deg pulse               (p11)/2 + d14 ~ 1/(J)
+;               for self-refocussing pulse     20 usec
+;cnst21: chemical shift for selective pulse (offset, in ppm)
+;l1: loop for MLEV cycle: (((p6*64) + p5) * l1) + (p17*2) = mixing time
+;vd : variable delay, taken from vd-list
+;        to be used for z-filter
+;NS: 32 * n, total number of scans: NS * TD0
+;DS: 4
+;td0: TD0 = multiple of number of delays in vd-list       [10]
+
+
+;phcor 1 : phasedifference between power levels sp1 and pl10 
+
+;choose p11 according to desired selectivity
+;the flip-angle is determined by the amplitude
+;set O1 on resonance on the multiplet to be excited or use spoffs
+
+;define VDLIST
+
+;example for z-filter list:
+;                           0.004s
+;                           0.016s
+;                           0.010s
+;                           0.006s
+;                           0.004s
+;                           0.010s
+;                           0.017s
+;                           0.011s
+;                           0.018s
+;                           0.012s
+
+
+
+;$Id: selmlzf,v 1.13.2.3 2011/01/11 10:57:36 ber Exp $

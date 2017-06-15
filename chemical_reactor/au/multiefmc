@@ -1,0 +1,54 @@
+/*** ^^A -*-C++-*- **********************************************/
+/*	multiefp		15.08.1990			*/
+/****************************************************************/
+/*	Short Description :					*/
+/*	This AU program performs multiple "efp" on increasing	*/
+/*	expnos.							*/
+/****************************************************************/
+/*	Keywords :						*/
+/*	multiple efp						*/
+/****************************************************************/
+/*	Description/Usage :					*/
+/*	This AU program performs multiple "efp" on increasing	*/
+/*	expnos.							*/
+/****************************************************************/
+/*	Author(s) :						*/
+/*	Name		: Rainer Kerssebaum			*/
+/*	Organisation	: Bruker Analytik			*/
+/*	Email		: rainer.kerssebaum@bruker.de		*/
+/****************************************************************/
+/*	Name		Date	Modification:			*/
+/*	rke		900815	created				*/
+/****************************************************************/
+/*
+$Id: multiefp,v 1.5 2000/07/12 11:39:49 gsc Exp $
+*/
+
+#include <lib/util.h>
+
+float lb;
+int first, max;
+char string[80];
+lb=15;
+GETCURDATA
+
+first = expno;
+STOREPAR ("LB", lb)
+GETINT ("Enter first expno to process : ",first)
+max = 10;
+GETINT ("Enter number of expnos : ",max)
+WPAR("tmpmefp","proc")
+expno = first;
+TIMES(max)
+  RPAR("tmpmefp","proc")
+  FT
+  MC
+  IEXPNO
+END
+DEXPNO
+
+/* delete remaining files */
+
+DELPAR("tmpmefp")
+
+QUITMSG("--- multiefp finished ---")

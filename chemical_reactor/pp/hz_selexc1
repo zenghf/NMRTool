@@ -1,0 +1,80 @@
+;zggpwg
+;avance-version (10/02/12)
+;1D sequence
+;water suppression using watergate sequence
+;
+;M. Piotto, V. Saudek & V. Sklenar, J. Biomol. NMR 2, 661 - 666 (1992)
+;V. Sklenar, M. Piotto, R. Leppik $ V. Saudek, J. Magn. Reson., 
+;   Series A 102, 241 -245 (1993)
+;
+;$CLASS=HighRes
+;$DIM=1D
+;$TYPE=
+;$SUBTYPE=
+;$COMMENT=
+
+
+prosol relations=<triple>
+
+
+#include <Avance.incl>
+#include <Grad.incl>
+
+
+"p2=p1*2"
+"d12=20u"
+
+
+1 ze
+2 30m
+  d1 
+ 
+  50u UNBLKGRAD
+
+3 1u
+  100u pl0:f1
+  (p11:sp1 ph2:r):f1
+  ;p16:gp1
+;  200u
+;lo to 3 times l1
+
+  4u BLKGRAD
+;  10u pl1:f1
+;  p1 ph1
+  go=2 ph31
+  30m mc #0 to 2 F0(zd)
+exit
+
+
+ph1=0 2
+ph2=0 0 1 1 2 2 3 3 
+ph3=2 2 3 3 0 0 1 1
+ph31=0 2 2 0
+
+
+;pl0 : 0W
+;pl1 : f1 channel - power level for pulse (default)
+;sp1 : f1 channel - shaped pulse  90 degree
+;p1 : f1 channel -  90 degree high power pulse
+;p2 : f1 channel - 180 degree high power pulse
+;p11: f1 channel -  90 degree shaped pulse
+;p16: homospoil/gradient pulse
+;d1 : relaxation delay; 1-5 * T1
+;d12: delay for power switching                      [20 usec]
+;d16: delay for homospoil/gradient recovery
+;NS: 8 * n, total number of scans: NS * TD0
+;DS: 4
+
+
+;use gradient ratio:	gp 1
+;			  20
+
+;for z-only gradients:
+;gpz1: 20%
+
+;use gradient files:   
+;gpnam1: SMSQ10.100
+
+
+
+;$Id: zggpwg,v 1.10.2.1 2010/02/12 15:14:19 ber Exp $

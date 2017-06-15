@@ -1,0 +1,86 @@
+/*-*-C++-*-*********************************************************
+*
+* $Source: /sc/CvsTree/sc/gen/src/prg/makeau/inc/make_zero_fid,v $
+*
+* Copyright (c) 1995
+* BRUKER BIOSPIN GMBH
+* D-76287 Rheinstetten, Germany
+*
+* All Rights Reserved
+*
+*
+* $Id: make_zero_fid,v 1.10 2008/03/11 15:22:19 wem Exp $
+*
+********************************************************************
+*/ 
+{
+    int Parmode;
+    int Dtypa;
+    int File_Desc;
+    int Td;
+    char fid_memory[64 * 1024];
+    char Fid_Path[PATH_MAX];
+    size_t Total_size;
+
+/*** get PARMODE parameter ***/
+    FETCHPAR("PARMODE",&Parmode)
+
+/** create Filename of current data ***/
+    strcpy(Fid_Path, ACQUPATH(Parmode ? "ser":"fid"));
+
+/*** calculate file size ***/
+    FETCHPAR("DTYPA",&Dtypa)
+    if (Dtypa == 2)
+	Total_size = sizeof(double);
+    else
+	Total_size = sizeof(int);
+
+    FETCHPAR("TD",&Td);
+    Total_size *= Td;
+
+    if (Parmode >= 1)
+    {
+	Total_size = ((Total_size+1023)/1024)*1024; /* round up */
+	FETCHPAR1("TD",&Td);
+	Total_size *= Td;
+    }
+    if (Parmode >= 2)
+    {
+	FETCHPAR3("TD",&Td);
+	Total_size *= Td;
+    }
+
+    if ((File_Desc=open(Fid_Path,O_RDWR|O_CREAT|O_TRUNC,0666)) == -1)
+    {
+	Perror(DEF_ERR_OPT,Fid_Path);
+	return -1;
+    }
+
+/*** Set memory to zero ***/
+    memset(fid_memory,0,sizeof(fid_memory));
+
+    do
+    {
+	long Byteswritten = write(File_Desc,fid_memory,
+	Total_size < sizeof(fid_memory) ? Total_size : sizeof(fid_memory));
+
+	if (Byteswritten < 0)
+	{
+	    Perror(DEF_ERR_OPT,Fid_Path);
+	    close(File_Desc);
+	    return -1;
+	}
+
+	Total_size -= Byteswritten;
+    }
+    while (Total_size);
+
+    if (close(File_Desc) < 0)
+    {
+	Perror(DEF_ERR_OPT,Fid_Path);
+	return -1;
+    }
+
+    STOREPARS("NS", 0);
+    Show_meta(SM_RAW | SM_RAWP);
+}

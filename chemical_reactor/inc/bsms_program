@@ -1,0 +1,778 @@
+/***********-*-C++-*-*************************************************
+*
+* $Source: /sc/CvsTree/sc/gen/src/prg/makeau/inc/bsms_program,v $
+*
+* Copyright (c) 1995
+* BRUKER BIOSPIN GMBH
+* D-76287 Rheinstetten, Germany
+*
+* All Rights Reserved
+*
+* $Id: bsms_program,v 1.43 2009/02/27 10:42:30 gsc Exp $
+*
+********************************************************************
+*/
+/***************************************************************
+	Source code macro for BSMS AU programs
+****************************************************************/
+extern int BSMS_program(const char *, const char *);
+
+
+/* 'normal' AU program to call specific sample changer program	*/
+
+GETCURDATA
+
+/***************************************************************
+ * SIMPLEX_NAME must be defined if this file is included from the
+ * AU program simplex to work around some unacceptable features.
+ * In this case SIMPLEX_PROGRAM is defined here so that the
+ * AU program simplex could detect the right bsms_program version.
+ ***************************************************************/
+#ifdef SIMPLEX_NAME
+
+#ifndef SIMPLEX_PROGRAM
+#define SIMPLEX_PROGRAM
+#endif
+
+/* Init/Standby BSMS are done inside simplex */
+AUERR = BSMS_program(curdat,cmd);
+QUIT
+
+#else	/* ! SIMPLEX_NAME */
+
+#ifdef SIMPLEX_PROGRAM
+#undef SIMPLEX_PROGRAM
+#endif
+
+AUERR = BSMS_program(curdat,cmd);
+QUIT
+
+#endif	/* SIMPLEX_NAME */
+
+/**** end of AU program and beginning of global declarations ****/
+
+#include <lib/sxutil.h>
+#include <lib/libacq.h>
+
+
+#define FIELD_SHIFT_MODE        0
+#define LOCK_SHIFT_MODE         1
+#define MAX_LOCK        1.0
+#define MIN_LOCK        0.01
+
+#define GETBSMSVAL(_par_,_val_)	\
+	if((AUERR=GetBsmsValue(sizeof(_val_),__LINE__,__FILE__,_par_,&_val_)) < 0) return AUERR;
+
+#define PUTBSMSVAL(_par_,_val_)	\
+	if((AUERR=PutBsmsValue(sizeof(_val_),__LINE__,__FILE__,_par_,_val_)) < 0) return AUERR;
+
+#define GET_LOCK_POWER(_val_)	\
+	if((AUERR=GetBsmsLockPower(&_val_)) < 0) return AUERR;
+
+#define SET_LOCK_POWER(_val_)	\
+	if((AUERR=SetBsmsLockPower(_val_)) < 0) return AUERR;
+
+#define LOCKBSMS 
+#define UNLOCKBSMS
+#define BSMS_IS_ELCB 2
+
+static double BsmsLocknoise = 0.0;
+
+static double getnoise(void)
+{
+    int errcode = 0;
+    char command[256];
+    const char *exchangeFilePath;
+    const char *options[4];
+    const char *result;
+	
+    exchangeFilePath = getCPR_exchange_file_args(options);
+
+    sprintf(command,"bsmscmd %s %s LOCKGAIN",options[0],options[1]);
+
+    (void)unlink(exchangeFilePath); /* ignore nonexisting error */
+
+    errcode = CPR_exec(command, WAIT_TERM);
+
+    /* import result from file */
+    if ((result = getCPR_exchange_message(exchangeFilePath)) != NULL)
+    {
+	sscanf(result,"LOCKGAIN=%lf",&BsmsLocknoise);
+	(void)unlink(exchangeFilePath);
+    }
+    return errcode;
+}
+
+
+
+static int GetBsmsValue(size_t par_size,	/* length of data type */
+			int line_number,
+			char *file_name,
+			int par_addr,		/* BSMS parameter identifier */
+			...)
+{
+    BSN *BsmsEntry;						 
+    int *i_val;
+    double *d_val;				 
+    int errcode = 0;					 
+    char command[256];					 
+    const char *exchangeFilePath;				 
+    const char *options[4];				 
+    const char *result;					 
+/* VARARGS */
+    va_list list;
+
+    va_start(list, par_addr);
+
+    if ( (BsmsEntry = BsmsEntryByAdr(par_addr)) == 0 )
+    {						 
+	Proc_err(ERROR_OPT,"GETBSMSVAL unknown parameter identifier:%d",par_addr);	 
+	va_end(list);
+	return -1;
+    }	
+    if (BsmsEntry->exp && par_size != sizeof(double))
+    {
+	Proc_err(ERROR_OPT,"GETBSMSVAL: BSMS datatype of %s is double.\n"
+		 "Please fix  definition of parameter in line %d "
+		 "of your AU program %s",
+		 BsmsEntry->name,line_number,file_name);	 
+	va_end(list);
+	return -1;
+    }
+    else if ( ! BsmsEntry->exp && par_size == sizeof(double))
+    {
+	Proc_err(ERROR_OPT,"GETBSMSVAL: BSMS datatype of %s is integer.\n"
+		 "Please fix definition of parameter in line %d "
+		 "of your AU program %s",
+		 BsmsEntry->name,line_number,file_name);	 
+	va_end(list);
+	return -1;
+    }
+
+    exchangeFilePath = getCPR_exchange_file_args(options); 
+    sprintf(command,"bsmscmd %s %s %s",options[0],options[1],BsmsEntry->name); 
+    (void)unlink(exchangeFilePath);			 
+    errcode = CPR_exec(command, WAIT_TERM);
+    if ((result = getCPR_exchange_message(exchangeFilePath)) != NULL) 
+    {
+	char *ptr = strchr(result,'=');
+
+	(void)unlink(exchangeFilePath);			 
+
+	if (ptr && strncmp(result,BsmsEntry->name,strlen(BsmsEntry->name)) == 0)
+	{
+	    ptr++;
+	    if (BsmsEntry->exp)
+		sscanf(ptr,"%f",&BsmsEntry->fval);			 
+	    else 				 
+		sscanf(ptr,"%d",&BsmsEntry->val);
+	}
+	else
+	{
+	    
+	    va_end(list);
+	    if (errcode == NORM_TERM)
+		Proc_err(ERROR_OPT,"%s\n\t%s\n",
+			 command,result);
+	    return -1;
+	}
+    }							 
+
+    if (par_size == sizeof(double))
+    {
+      d_val =  va_arg(list, double *);
+      if (BsmsEntry->exp) *d_val = BsmsEntry->fval;
+      else                *d_val = BsmsEntry->val;
+    }
+    else
+    {
+      i_val =  va_arg(list, int *);
+      if (BsmsEntry->exp) *i_val = (int) BsmsEntry->fval;
+      else                *i_val = BsmsEntry->val;
+    }
+    va_end(list);
+    return errcode;
+}
+
+static int PutBsmsValue(size_t par_size,	/* length of data type */
+			int line_number,
+			char *file_name,
+			int par_addr,		/* BSMS parameter identifier */
+			...)
+{							
+    BSN *BsmsEntry;						
+    int ex_shift;						
+    int i_val = 0;
+    double d_val = 0;				 
+    int errcode = 0;					
+    char command[256];					
+    const char *exchangeFilePath;				
+    const char *options[4];				
+    const char *result;					
+/* VARARGS */
+    va_list list;
+
+    va_start(list, par_addr);
+
+
+    if ( (BsmsEntry = BsmsEntryByAdr(par_addr)) == 0 )
+    {						
+	Proc_err(ERROR_OPT,"PUTBSMSVAL unknown parameter identifier:%d",par_addr);	
+	va_end(list);
+	return -1;
+    }						
+    if (BsmsEntry->exp && par_size != sizeof(double))
+    {
+	Proc_err(ERROR_OPT,"PUTBSMSVAL: BSMS datatype of %s is double.\n"
+		 "Please fix  definition of parameter in line %d "
+		 "of your AU program %s",
+		 BsmsEntry->name,line_number,file_name);	 
+	va_end(list);
+	return -1;
+    }
+    else if ( ! BsmsEntry->exp && par_size == sizeof(double))
+    {
+	Proc_err(ERROR_OPT,"PUTBSMSVAL: BSMS datatype of %s is integer.\n"
+		 "Please fix definition of parameter in line %d "
+		 "of your AU program %s",
+		 BsmsEntry->name,line_number,file_name);	 
+	va_end(list);
+	return -1;
+    }
+
+
+    if (par_size == sizeof(double)) d_val =  va_arg(list, double);
+    else			    i_val =  va_arg(list, int);
+    va_end(list);
+
+
+    exchangeFilePath = getCPR_exchange_file_args(options);
+    if ( (ex_shift = BsmsEntry->exp) != 0 )
+    {
+	if (par_size != sizeof(double)) d_val = i_val;
+	sprintf(command,"bsmscmd %s %s %s %f",		
+		options[0],options[1],BsmsEntry->name,d_val);
+    }
+    else
+    {
+	if (par_size == sizeof(double)) i_val = d_val;
+	sprintf(command,"bsmscmd %s %s %s %d",		
+		options[0],options[1],BsmsEntry->name,i_val);
+    }
+    (void)unlink(exchangeFilePath);			
+    errcode = CPR_exec(command, WAIT_TERM);
+    if ((result = getCPR_exchange_message(exchangeFilePath)) != NULL)
+    {							
+	(void)unlink(exchangeFilePath);			
+    }							
+
+    return 0;
+}
+
+
+static int GetBsmsLockPower(double *lpow)
+{
+    int errcode = 0;					 
+    char command[256];					 
+    const char *exchangeFilePath;				 
+    const char *options[4];				 
+    const char *result;					 
+
+    exchangeFilePath = getCPR_exchange_file_args(options);
+    sprintf(command,"lockpower %s %s",options[0],options[1]); 
+    (void)unlink(exchangeFilePath);			 
+
+    errcode = CPR_exec(command, WAIT_TERM);
+    if ((result = getCPR_exchange_message(exchangeFilePath)) != NULL) 
+    {
+	char *ptr = strchr(result,'=');
+	(void)unlink(exchangeFilePath);			 
+	if (ptr)
+	{
+	    double dval;
+	    ptr++;
+	    sscanf(ptr,"%lf",&dval);
+	    *lpow = dval;
+	}
+	else
+	{
+	    Proc_err(ERROR_OPT,"syntax error in lockepower answer:\n%s\n\t%s\n",
+		     command,result);
+	    return -1;
+	}
+    }
+    return 0;
+}
+
+static int SetBsmsLockPower(double lpow)
+{
+    int errcode = 0;					 
+    char command[256];					 
+    const char *exchangeFilePath;				 
+    const char *options[4];				 
+    const char *result;					 
+
+    exchangeFilePath = getCPR_exchange_file_args(options);
+    sprintf(command,"lockpower %s %s %g",options[0],options[1],lpow); 
+    (void)unlink(exchangeFilePath);			 
+
+    errcode = CPR_exec(command, WAIT_TERM);
+    if ((result = getCPR_exchange_message(exchangeFilePath)) != NULL) 
+    {
+	char *ptr = strchr(result,'=');
+	(void)unlink(exchangeFilePath);			 
+	if (ptr)
+	{
+	    double dval;
+	    ptr++;
+	    sscanf(ptr,"%lf",&dval);
+	}
+	else
+	{
+	    Proc_err(ERROR_OPT,"syntax error in lockepower answer:\n%s\n\t%s\n",
+		     command,result);
+	    return -1;
+	}
+    }							 
+    return 0;
+}
+
+
+#ifdef SIMPLEX_NAME
+
+/***************************************************************
+ * Utility functions for simplex
+ ***************************************************************/
+static int getlockSimplex (int lockdwell, double *level, int delay,
+			   FILE *fd_tty)
+{
+    int errcode = 0;
+    char command[256];
+    const char *exchangeFilePath;
+    const char *options[4];
+    const char *result;
+    int		i;
+    double	slope, average, loval=0, BsmsLocknoise=0;
+    double	val, noise;
+    char *ptr;
+	
+    /* sample at least 3 values */
+    if (lockdwell <= 3) lockdwell = 3;
+    if (lockdwell > 32) lockdwell = 32;
+
+    exchangeFilePath = getCPR_exchange_file_args (options);
+    sprintf (command, "bsmscmd %s %s LOCKGAIN", options[0], options[1]);
+    (void) unlink (exchangeFilePath);		/* ignore nonexisting error */
+    errcode = CPR_exec (command, WAIT_TERM);
+
+    /* import result from file */
+    if (errcode || (result=getCPR_exchange_message(exchangeFilePath)) == NULL)
+    {
+      (void) unlink (exchangeFilePath);
+      return -1;
+    }
+
+    sscanf (result, "LOCKGAIN=%lf", &val);
+    (void) unlink (exchangeFilePath);
+#if DEBUG && DEBUG_GETLOCK
+    fprintf (fd_tty, "gain = %.8g\n", val);
+    fflush (fd_tty);
+#endif
+    BsmsLocknoise = 1.12e-9*pow(10,val/20);
+
+    /* get average of lock level , and mean slope */
+    for (;;)
+    {
+      for (i=0, slope=0, average=0; i<lockdwell; i++)
+      {
+	if (delay > 0) sleep (delay);
+		
+	exchangeFilePath = getCPR_exchange_file_args(options);
+	sprintf(command,"getlock %s %s %d",options[0],options[1],lockdwell);
+	(void)unlink(exchangeFilePath);
+	errcode = CPR_exec(command, WAIT_TERM);
+
+	/* import result from file */
+	if (errcode ||
+	    (result = getCPR_exchange_message(exchangeFilePath)) == NULL)
+	{
+	  (void)unlink(exchangeFilePath);			 
+	  return -1;
+	}
+
+	noise = BsmsLocknoise;
+	ptr = strchr(result,'=');
+	if (! ptr)
+	{
+	  Proc_err(ERROR_OPT,"syntax error in getlock answer:\n%s\n\t%s\n",
+		   command,result);
+	  (void)unlink(exchangeFilePath);			 
+	  return -1;
+	}
+	ptr++;
+	sscanf(ptr,"%lf",&val);
+	ptr = strchr(ptr,'=');
+	if (! ptr)
+	{
+	  Proc_err(ERROR_OPT,"syntax error in getlock answer:\n%s\n\t%s\n",
+		   command,result);
+	  (void)unlink(exchangeFilePath);			 
+	  return -1;
+	}
+	ptr++;
+	sscanf(ptr,"%lf",&noise);
+#ifndef SIMPLEX_NOISE_FROM_GAIN
+	if (noise < BsmsLocknoise)
+#endif
+	  noise = BsmsLocknoise;
+	(void)unlink(exchangeFilePath);			 
+#if DEBUG && DEBUG_GETLOCK
+	fprintf (fd_tty, "level = %.8g   noise = %.8g\n", val, noise);
+	fflush (fd_tty);
+#endif
+
+	if (i > 0) slope += fabs (val-loval);
+	loval = val;
+	average += loval;
+      }
+      average /= lockdwell;
+      slope /= lockdwell-1;
+
+#if DEBUG_GETLOCK
+      fprintf (fd_tty, "average = %.8g\nnoise = %.8g\nmean slope = %.8g\n",
+	       average, noise, slope);
+      fflush (fd_tty);
+#endif
+
+      if ((noise != 0) && (fabs(slope) > noise)) continue;
+      else break;
+    }
+
+    *level = average;
+
+    return errcode;
+}
+
+static void autogainSimplex (int locked_mode, FILE *fd_tty)
+{
+    int errcode = 0;
+    char command[256];
+    const char *exchangeFilePath;
+    const char *options[4];
+    const char *result;
+	
+    if (! locked_mode) return;
+    exchangeFilePath = getCPR_exchange_file_args(options);
+
+    sprintf(command,"autogain %s %s",options[0],options[1]);
+
+    (void)unlink(exchangeFilePath);
+
+    sleep (2);
+    errcode = CPR_exec(command, WAIT_TERM);
+
+    if ((result = getCPR_exchange_message(exchangeFilePath)) != NULL)
+    {
+	char *ptr = strchr(result,'=');
+	(void)unlink(exchangeFilePath);			 
+	
+	if (ptr && strncmp(result,"LOCKGAIN=",9) == 0)
+	{
+	    double lockgain;
+	    ptr++;
+	    sscanf(ptr,"%lf",&lockgain);
+	    sleep (2);
+	    fprintf (fd_tty, "AUTOGAIN: lock gain set to %.1f\n", lockgain);
+	    fflush (fd_tty);
+	}
+	else
+	{
+	    Proc_err(ERROR_OPT,"syntax error in autogain answer:\n%s\n\t%s\n",
+		     command,result);
+	    return;
+	}
+    }
+}
+
+
+static void autophaseSimplex (int locked, FILE *fd_tty)
+{
+    int errcode = 0;
+    char command[256];
+    const char *exchangeFilePath;
+    const char *options[4];
+    const char *result;
+	
+    if (! locked) return;
+
+    exchangeFilePath = getCPR_exchange_file_args(options);
+
+    sprintf(command,"autophase %s %s",options[0],options[1]);
+
+    (void)unlink(exchangeFilePath);
+
+    sleep (2);
+    errcode = CPR_exec(command, WAIT_TERM);
+
+    if ((result = getCPR_exchange_message(exchangeFilePath)) != NULL)
+    {
+	char *ptr = strchr(result,'=');
+	(void)unlink(exchangeFilePath);			 
+	
+	if (ptr && strncmp(result,"LOCKPHASE=",10) == 0)
+	{
+	    double lockphase;
+	    ptr++;
+	    sscanf(ptr,"%lf",&lockphase);
+	    sleep (2);
+	    fprintf (fd_tty, "AUTOPHASE: lock phase set to %.1f\n", lockphase);
+	    fflush (fd_tty);
+	}
+	else
+	{
+	    Proc_err(ERROR_OPT,"syntax error in autophase answer:\n%s\n\t%s\n",
+		     command,result);
+	    return;
+	}
+    }
+}
+
+#define getlock		getlockSimplex
+#define autogain(x,y)	autogainSimplex (x, y)
+#define autophase(x,y)	autophaseSimplex (x, y)
+
+#else	/* ! SIMPLEX_NAME */
+
+/***************************************************************
+ * getlock function for the rest of the universe
+ ***************************************************************/
+static int getlockPlain(int lockdwell,double *level)
+{
+	int errcode = 0;
+	char command[256];
+	const char *exchangeFilePath;
+	const char *options[4];
+	const char *result;
+	
+	exchangeFilePath = getCPR_exchange_file_args(options);
+
+	sprintf(command,"getlock %s %s %d",options[0],options[1],lockdwell);
+
+	(void)unlink(exchangeFilePath);
+
+	errcode = CPR_exec(command, WAIT_TERM);
+
+	/* import result from file */
+	if (!errcode && (result = getCPR_exchange_message(exchangeFilePath)) != NULL)
+	{
+	    char *ptr = strchr(result,'=');
+	    (void)unlink(exchangeFilePath);			 
+	    if (ptr)
+	    {
+		double dval;
+		ptr++;
+		sscanf(ptr,"%lf",&dval);
+		*level = dval;
+	    }
+	    else
+	    {
+		Proc_err(ERROR_OPT,"syntax error in getlock answer:\n%s\n\t%s\n",
+			 command,result);
+		return -1;
+	    }
+	}
+	return 0;
+}
+
+
+
+/***************************************************************
+ * Some stub functions
+ ***************************************************************/
+void autogainPlain (void) {}
+void autophasePlain (void) {}
+
+#define getlock		getlockPlain
+#define autogain(x,y)	autogainPlain ()
+#define autophase(x,y)	autophasePlain ()
+
+#endif	/* SIMPLEX_NAME */
+
+static int SetGradientShim(
+    int RampMode,
+    int OffsetX,
+    int IncrementX,
+    int StepNumX,
+    int OffsetY,
+    int IncrementY,
+    int StepNumY,
+    int OffsetZ,
+    int IncrementZ,
+    int StepNumZ
+    )
+{
+    int errcode = 0;
+    char command[1024];
+    const char *exchangeFilePath;
+    const char *options[4];
+	
+    exchangeFilePath = getCPR_exchange_file_args(options);
+
+    sprintf(command,"realtimeslope %s %s %d %d %d %d %d %d %d %d %d %d ",
+	    options[0],options[1],
+	    RampMode,
+	    OffsetX,	     IncrementX,	     StepNumX,
+	    OffsetY,	     IncrementY,	     StepNumY,
+	    OffsetZ,	     IncrementZ,	     StepNumZ
+	);
+
+    (void)unlink(exchangeFilePath);
+
+    errcode = CPR_exec(command, WAIT_TERM);
+
+    return 0;
+}
+
+/* stat of sub-routines for adjustment of lock phase and lock gain */
+int auto_lock_gain(void)
+{
+    int errcode = 0;
+    char command[256];
+    const char *exchangeFilePath;
+    const char *options[4];
+    const char *result;
+	
+    exchangeFilePath = getCPR_exchange_file_args(options);
+
+    sprintf(command,"autogain %s %s",options[0],options[1]);
+
+    (void)unlink(exchangeFilePath); /* ignore nonexisting error */
+
+    errcode = CPR_exec(command, WAIT_TERM);
+
+    /* import result from file */
+    if ((result = getCPR_exchange_message(exchangeFilePath)) != NULL)
+    {
+	char *ptr = strchr(result,'=');
+	(void)unlink(exchangeFilePath);			 
+	
+	if (ptr && strncmp(result,"LOCKGAIN=",9) == 0)
+	{
+	    double lockgain;
+	    ptr++;
+	    sscanf(ptr,"%lf",&BsmsLocknoise);
+	}
+	else
+	{
+	    Proc_err(ERROR_OPT,"syntax error in autogain answer:\n%s\n\t%s\n",
+		     command,result);
+	    return -1;
+	}
+	(void)unlink(exchangeFilePath);
+    }
+    return errcode;
+
+}
+
+int auto_lock_phase(void)
+{
+    int errcode = 0;
+    char command[256];
+    const char *exchangeFilePath;
+    const char *options[4];
+    const char *result;
+	
+    exchangeFilePath = getCPR_exchange_file_args(options);
+
+    sprintf(command,"autophase %s %s",options[0],options[1]);
+
+    (void)unlink(exchangeFilePath); /* ignore nonexisting error */
+
+    errcode = CPR_exec(command, WAIT_TERM);
+
+    /* import result from file */
+    if ((result = getCPR_exchange_message(exchangeFilePath)) != NULL)
+    {
+	char *ptr = strchr(result,'=');
+	(void)unlink(exchangeFilePath);			 
+	
+	if (ptr && strncmp(result,"LOCKPHASE=",10) == 0)
+	{
+	    double lockphase;
+	    ptr++;
+	    sscanf(ptr,"%lf",&lockphase);
+	}
+	else
+	{
+	    Proc_err(ERROR_OPT,"syntax error in autogain answer:\n%s\n\t%s\n",
+		     command,result);
+	    return -1;
+	}
+    }
+    return errcode;
+}
+
+int switchBsmsLock(int mode)
+{
+    int errcode = 0;
+    char command[256];
+    const char *exchangeFilePath;
+    const char *options[4];
+    const char *result;
+	
+    exchangeFilePath = getCPR_exchange_file_args(options);
+
+    sprintf(command,"bsmscmd %s %s LOCK %d",options[0],options[1],mode);
+
+    (void)unlink(exchangeFilePath); /* ignore nonexisting error */
+
+    errcode = CPR_exec(command, WAIT_TERM);
+
+    /* import result from file */
+    if ((result = getCPR_exchange_message(exchangeFilePath)) != NULL)
+    {
+	(void)unlink(exchangeFilePath);
+    }
+
+    return errcode;
+}
+
+int switchBsmsSweep(int mode)
+{
+    int errcode = 0;
+    char command[256];
+    const char *exchangeFilePath;
+    const char *options[4];
+    const char *result;
+	
+    exchangeFilePath = getCPR_exchange_file_args(options);
+
+    sprintf(command,"bsmscmd %s %s SWEEP %d",options[0],options[1],mode);
+
+    (void)unlink(exchangeFilePath); /* ignore nonexisting error */
+
+    errcode = CPR_exec(command, WAIT_TERM);
+
+    /* import result from file */
+    if ((result = getCPR_exchange_message(exchangeFilePath)) != NULL)
+    {
+	(void)unlink(exchangeFilePath);
+    }
+
+    return errcode;
+}    
+
+
+
+/*-------------------------------------------------------------*/
+/**** start of Sample Changer program ***************************/
+int BSMS_program(
+    const char *curdat,	/* current data path name		*/
+    const char *cmd	/* eventual command on spec. line	*/
+    )
+
+{
+   int i1,i2,i3;	/* define some local variables for each function */
+   float f1,f2,f3;
+   double d1,d2,d3;
+   char text[4096];

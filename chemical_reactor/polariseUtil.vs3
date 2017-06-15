@@ -1,0 +1,177 @@
+/*** ^^A -*-C++-*- **********************************************/
+/* polariseVs3.h                                                */
+/****************************************************************/
+/* Short Description :                                          */
+/* This header file contains some constant definitions and      */
+/* a selection of functions to communicate with polariser Vs 3  */
+/*                                                              */
+/* This file must reside in <topspinhome>/prog/include/inc/     */
+/****************************************************************/
+/* Author(s) :                                                  */
+/* Name  : Joost Lohman                                         */
+/* Organisation : Bruker UK ltd                                 */
+/* Email  : joost.lohman@bruker.co.uk                           */
+/****************************************************************/
+/* Name  Date   Modification:                                   */
+/* jab    110816 Created                 		        */
+/****************************************************************/
+/* These functions use the library lib_tty                      */
+/*                                                              */
+/* Available functions:                                         */
+/*                                                              */
+/* void initbphp( TTY_DEVICE bphp )                             */
+/*   This function initialises the TTY_DEVICE structure for     */
+/*   communication with a virtusl COM port. It also defines     */
+/*   the location of the configuration file for the polariser   */
+/*   This function needs to be called before any other functions*/
+/*   Arguments: bphp: virtual COM port                          */ 
+/*                                                              */
+/* void writeCmnd( TTY_DEVICE bphp, char* polCmnd )             */
+/*   This function writes a command string to the polariser.    */
+/*   Arguments: bphp: virtual COM port                          */ 
+/*              polCmnd: polariser command                      */
+/*                                                              */
+/* void readResponse( TTY_DEVICE bphp, char* polResponse )      */
+/*   This function reads a string from the polariser.           */
+/*   Arguments: bphp: virtual COM port                          */ 
+/*              polResponse: returned string                    */
+/*                                                              */
+/* Debugging: Debugging messages from these functions are       */
+/*   controlled by the predefined constant DEBUG (see below)    */
+/****************************************************************/
+/*
+$Id: polariseUtil.vs3,v 1.1 2011/11/29 14:18:22 hb Exp $
+*/
+
+/****************************************************************/
+/* Declare some constants and variables                         */
+/****************************************************************/
+
+#define DEBUG      1  /* Set to 0 for no output, 1 for full output */
+                      /* 2 for response from polariser only */
+
+char polCmnd[128], polResponse[1024];	 /* Command for and response from polariser */
+
+/* Library and definitions for COM port operation of the BPHP */
+#include <lib/lib_tty.h>
+
+#define BPHP_CONFIG_FILE 	"rs232_device/bphp"
+
+#ifdef HAS_WINDOWS_FEATURES
+	#define BPHP_DEFAULT_PORT 	"COM1"
+#else
+	#define BPHP_DEFAULT_PORT 	"/dev/ttyUSB0"
+#endif
+
+/****************************************************************/
+/* Function definitions                                         */
+/****************************************************************/
+
+/* Function BPHP error message */
+void bphpError(char* errormessage)
+{
+    if (DEBUG==1) printf(  "%s\nError: %s\n", errormessage,tty_errmsg() );
+    Proc_err(ERROR_OPT, "%s\nError: %s\n", errormessage,tty_errmsg());
+}
+
+/* Function to initialise BPHP device */
+int initbphp(TTY_DEVICE *bphp)
+{
+    char debugmessage[128];
+
+    (void) sprintf( debugmessage, "Initialising device file %s for %s\n", 
+		    BPHP_CONFIG_FILE, BPHP_DEFAULT_PORT);
+    if (DEBUG==1) printf( debugmessage );
+
+    if (-1 == tty_init(bphp, BPHP_CONFIG_FILE , TTY_DEFAULT_TIMEOUT, BPHP_DEFAULT_PORT ))
+    { 
+	bphpError( "Cannot initialise BPHP");
+	return -1;
+    }
+    printf("%s",tty_debug(bphp));
+
+    return 0;  
+}
+
+/* Function to open PHP device */
+int openbphp(TTY_DEVICE *bphp)
+{
+    char debugmessage[128];
+
+    (void) sprintf( debugmessage, "open COM port for BPHP\n");
+    if (DEBUG==1) printf( debugmessage );
+    if (-1 == tty_init(bphp, BPHP_CONFIG_FILE , TTY_DEFAULT_TIMEOUT, BPHP_DEFAULT_PORT ))
+    { 
+	bphpError( "Cannot initialise BPHP");
+	return -1;
+    }
+    if(-1 == tty_open(bphp))
+    {
+	bphpError( "polariseUtil.vs3 Cannot open COM port for BPHP");
+	return -1;
+    }
+
+    return 0;
+}
+/* Function to open BPHP device */
+int closebphp(TTY_DEVICE *bphp)
+{
+    char debugmessage[128];
+
+    (void) sprintf( debugmessage, "close COM port for BPHP\n");
+    if (DEBUG==1) printf( debugmessage );
+
+    if(-1 == tty_close(bphp))
+    {
+	bphpError( "Cannot close COM port for BPHP");
+	return -1;
+    }
+    return 0;  
+}
+
+/* Function to write a command to the BPHP */
+int writeCmnd(TTY_DEVICE *bphp, char* polCmnd )
+{ 
+    size_t bytes_to_write;    /* int bytes_to_write; */
+    char debugmessage[128];
+
+    (void) sprintf( debugmessage, "\nWriting to BPHP: %s", polCmnd );
+    if (DEBUG==1) printf( debugmessage );
+    bytes_to_write = strlen( polCmnd );
+    /* if (DEBUG==1) printf("tty->lockname=%s", bphp->lockname);  */
+
+    if(-1 == tty_lock(bphp))
+    {
+	bphpError( "polariseUtil.vs3: Cannot lock COM port for BPHP");
+	return -1;
+    }
+
+    if(-1 == tty_writestring(bphp, (const unsigned char*)polCmnd, bytes_to_write))
+    { 
+	bphpError( "Cannot write to COM port for BPHP");
+    }
+
+    if(-1 == tty_unlock(bphp)) bphpError( "Cannot unlock COM port for BPHP");
+    return 0;  
+}
+
+/* Function to read the response from the BPHP */
+int readResponse(TTY_DEVICE *bphp, char* polResponse )
+{
+    int max_bytes_to_read=512;
+    char debugmessage[128];
+
+    if(-1 == tty_lock(bphp)) bphpError( "Cannot lock COM port for BPHP");
+
+    if(-1 == tty_gets(bphp, polResponse, max_bytes_to_read))
+    { 
+	bphpError( "Cannot read COM port for BPHP\n");
+    }
+
+    if(-1 == tty_unlock(bphp)) bphpError( "Cannot unlock COM port for BPHP");
+
+    (void) sprintf( debugmessage, "\nBPHP returns: %s", polResponse );
+    if (DEBUG==1) printf( debugmessage );
+    return 0;  
+}
+

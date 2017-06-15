@@ -1,0 +1,814 @@
+/*-*-C++-*-********************************************************
+ *
+ * $Source: /sc/CvsTree/sc/gen/src/prg/makeau/inc/layout_package_h,v $
+ *
+ * Copyright (c) 2005
+ * BRUKER BIOSPIN GMBH
+ * D-76287 Rheinstetten, Germany
+ *
+ * All Rights Reserved
+ *
+ *
+ * $Id: layout_package_h,v 1.5 2008/03/12 11:55:28 prs Exp $
+ *
+ *******************************************************************
+*/
+#ifndef LAYOUT_PACKAGE_H_INCLUDED
+#define LAYOUT_PACKAGE_H_INCLUDED
+
+// Set to 43 to create layout files compatible with TOPSPIN 1.3
+// either here or in AU code just before #include <inc/layout_package>
+#ifndef LAYOUT_VERSION_CREATE
+#   define LAYOUT_VERSION_CREATE 45
+#endif
+
+#define STRUCT_INIT_CHECK int hasBeenInitialised
+#define STRUCT_INIT_STATEMENT(xxx_) xxx_.hasBeenInitialised = 2102;
+#define STRUCT_INIT_VAL 2102
+
+typedef int LayoutPaperSize;
+typedef int LayoutPaperOrientation;
+typedef int LayoutColor;
+typedef int LayoutLineWidth;
+typedef int LayoutLineStyle;
+typedef int LayoutFillStyle;
+typedef int LayoutAxisUnit;
+typedef int LayoutPeakAnnotationMode;
+typedef int LayoutFontType;
+typedef int LayoutArrowType;
+typedef int LayoutResetRegionType;
+typedef int LayoutScalingAfterResetType;
+typedef int LayoutResetActionAxis;
+typedef int LayoutResetActionIntensity;
+typedef int LayoutObjectAngle;
+typedef int LayoutStructType;
+#define LAYOUT_RGB_VALUE(x,y,z) 	x*256*256 + y * 256 + z
+#define LAYOUT_R_VALUE(x)			x / 256 / 256
+#define LAYOUT_G_VALUE(x)			x / 256 - x / 256 / 256 * 256
+#define LAYOUT_B_VALUE(x)			x - x / 256 * 256
+
+#define LAYOUT_ATTRIBUTES_ID_STANDARD_TITLE	    12
+#define LAYOUT_ATTRIBUTES_ID_STANDARD_TEXT		    13
+#define LAYOUT_ATTRIBUTES_ID_STANDARD_AXIS		    14
+#define LAYOUT_ATTRIBUTES_ID_STANDARD_DATA		    15
+#define LAYOUT_ATTRIBUTES_ID_STANDARD_PARAMETERS	    16
+#define LAYOUT_ATTRIBUTES_ID_STANDARD_PEAKS	    17
+#define LAYOUT_ATTRIBUTES_ID_STANDARD_INTEGRALS	    18
+#define LAYOUT_ATTRIBUTES_ID_STANDARD_CONTOUR_LEVEL    19
+#define LAYOUT_ATTRIBUTES_ID_STANDARD_SCALING_INFO     20
+#define LAYOUT_ATTRIBUTES_ID_STANDARD_GRID		    21
+
+
+/* -------------------------------------------------------- */
+/* Enumeration definitions									*/
+/* -------------------------------------------------------- */
+
+enum LayoutPaperSize {
+	LayoutPaperSizeA3,
+	LayoutPaperSizeA4,
+	LayoutPaperSizeA5,
+	LayoutPaperSizeLetter,
+	LayoutPaperSizeLegal
+};
+
+enum LayoutPaperOrientation {
+	LayoutPaperOrientationPortrait,
+	LayoutPaperOrientationLandscape
+};
+
+enum LayoutColor {
+	LayoutColorBlack,
+	LayoutColorRed,
+	LayoutColorGreen,
+	LayoutColorBlue,
+	LayoutColorYellow,
+	LayoutColorCyan,
+	LayoutColorMagenta,
+	LayoutColorBrown,
+	LayoutColorNavyBlue,
+	LayoutColorSeaGreen,
+	LayoutColorViolet,
+	LayoutColorDarkViolet,
+	LayoutColorDimGray,
+	LayoutColorGray,
+	LayoutColorLightGray,
+	LayoutColorWhite,
+	LayoutColorRGB
+};
+
+enum LayoutLineWidth {
+	LayoutLineWidthSuperThin,
+	LayoutLineWidth1,
+	LayoutLineWidth2,
+	LayoutLineWidth3,
+	LayoutLineWidth4,
+	LayoutLineWidth5,
+	LayoutLineWidth6
+};
+
+enum LayoutLineStyle {
+	LayoutLineStyleNoLine,
+	LayoutLineStyleSolid,
+	LayoutLineStyleDot1,
+	LayoutLineStyleDot2,
+	LayoutLineStyleDot3,
+	LayoutLineStyleDashDot
+};
+
+enum LayoutFillStyle {
+	LayoutFillStyleUnfilled,
+	LayoutFillStyleSolid,
+	LayoutFillStyleHorzLines,
+	LayoutFillStyleVertLines
+};
+
+enum LayoutFontType {
+	LayoutFontTypeCourierNormal,
+	LayoutFontTypeCourierBold,
+	LayoutFontTypeCourierItalic,
+	LayoutFontTypeCourierBoldItalic,
+	LayoutFontTypeHelveticaNormal,
+	LayoutFontTypeHelveticaBold,
+	LayoutFontTypeHelveticaItalic,
+	LayoutFontTypeHelveticaBoldItalic,
+	LayoutFontTypeTimesNormal,
+	LayoutFontTypeTimesBold,
+	LayoutFontTypeTimesItalic,
+	LayoutFontTypeTimesBoldItalic,
+	LayoutFontTypeSymbol
+	};
+
+enum LayoutArrowType {
+	LayoutArrowTypeNoTip,
+	LayoutArrowTypeBeginTip,
+	LayoutArrowTypeEndTip,
+	LayoutArrowTypeBothTip
+	};
+
+enum LayoutResetRegionType {
+	LayoutResetRegionTypeReg,
+	LayoutResetRegionTypeIntrng,
+	LayoutResetRegionTypeSREGLST
+	};
+
+enum LayoutScalingAfterResetType {
+	LayoutScalingAfterResetTypePercent,
+	LayoutScalingAfterResetTypeCm,
+	LayoutScalingAfterResetTypeCY
+};
+
+enum LayoutResetActionAxis {
+    LayoutResetActionAxisDontChange,
+    LayoutResetActionAxisSetToMinMax,
+    LayoutResetActionAxisDeprecated1,
+    LayoutResetActionAxisUseF1PF2P
+};
+
+enum LayoutResetActionIntensity {
+    LayoutResetActionIntensityDontChange,
+    LayoutResetActionIntensitySetToMinMax,
+    LayoutResetActionIntensitySetToMinMaxBetweenRange,
+    LayoutResetActionIntensityDeprecated1
+};
+
+enum LayoutObjectAngle {
+    LayoutObjectAngleStandard,
+    LayoutObjectAngleRotate90,
+    LayoutObjectAngleRotate180,
+    LayoutObjectAngleRotate270
+};
+
+enum LayoutAxisUnit {
+	LayoutAxisUnitPPM,
+	LayoutAxisUnitHz,
+	LayoutAxisUnitPoints
+};
+
+enum LayoutPeakAnnotationMode {
+	LayoutPeakAnnotationModePosition,
+	LayoutPeakAnnotationModeAnnotation,
+	LayoutPeakAnnotationModeBoth
+};
+
+enum LayoutStructType {
+	LayoutStructTypeFormat,
+	LayoutStructTypeAttributes,
+	LayoutStructType1d,
+	LayoutStructType2d,
+	LayoutStructType2dProjection,
+	LayoutStructTypeTitle,
+	LayoutStructTypeParameters,
+	LayoutStructTypeLine,
+	LayoutStructTypeRectangle,
+	LayoutStructTypeEllipse,
+	LayoutStructTypeText,
+	LayoutStructTypeMetafile,
+	LayoutStructTypeNMRText
+};
+
+/* -------------------------------------------------------- */
+/* FORMAT													*/
+/* -------------------------------------------------------- */
+
+typedef struct lpg_layout_format {
+	LayoutPaperSize size;			// use related enum values
+	LayoutPaperOrientation orientation;	// use related enum values
+	double marginLeft;			// paper margins in cm
+	double marginRight;
+	double marginTop;
+	double marginBottom;
+	int usesDefaultPrinter;			// 1 = enabled, 0 = 'printerName' is used
+	char printerName[512];
+	LayoutStructType structType;
+	STRUCT_INIT_CHECK;
+} LAYOUT_FORMAT;
+
+#define LAYOUT_FORMAT_DEFAULTS	lpg_layout_format_default_container
+#define lpg_LAYOUT_FORMAT_DEFAULTS {			\
+	LayoutPaperSizeA4,				\
+	LayoutPaperOrientationLandscape,  	 	\
+	1.5, 1.5, 1.5, 2.0, 				\
+	1, 						\
+	"Generic PostScript Printer",			\
+	LayoutStructTypeFormat,				\
+	STRUCT_INIT_VAL }	
+
+/* -------------------------------------------------------- */
+/* ATTRIBUTES												*/
+/* -------------------------------------------------------- */
+typedef struct lpg_layout_attributes {
+	LayoutColor lineColor;			// use related enum values
+	LayoutColor fillColor;			// use related enum values
+	int lineColorRGB;			// used if lineColor == LayoutColorRGB
+	int fillColorRGB;			// used if fillColor == LayoutColorRGB
+	LayoutLineWidth lineWidth;		// use related enum values
+	LayoutLineStyle lineStyle;		// use related enum values
+	LayoutFillStyle fillStyle;		// use related enum values
+	LayoutFontType	fontType;		// use related enum values
+	int fontSize;				// in pt
+	int attributeId;
+	LayoutStructType structType;
+	STRUCT_INIT_CHECK;
+} LAYOUT_ATTRIBUTES;
+
+#define LAYOUT_ATTRIBUTES_DEFAULTS {	\
+	LayoutColorBlack, 		\
+	LayoutColorRGB,			\
+	LAYOUT_RGB_VALUE(240, 230, 220),\
+	LAYOUT_RGB_VALUE(240, 230, 220),\
+	LayoutLineWidth1,		\
+	LayoutLineStyleSolid,		\
+	LayoutFillStyleUnfilled,	\
+	LayoutFontTypeCourierNormal,	\
+	12,				\
+	-1,				\
+	LayoutStructTypeAttributes,	\
+	STRUCT_INIT_VAL }
+
+/* -------------------------------------------------------- */
+/* TITLE													*/
+/* -------------------------------------------------------- */
+typedef struct lpg_layout_obj_title {
+	int dataSetNumber;		// no. of dataset in list to be used
+	double xPos;			// position and dimension in cm
+	double yPos;	
+	double xDim;
+	double yDim;
+	int fontSize;			// font size in pt
+	int allowAutomaticFontResize;	// 1 = yes, 0 = no
+	int attributeId;		// ID of attribute set to be used
+	LayoutStructType structType;
+	STRUCT_INIT_CHECK;
+} LAYOUT_OBJ_TITLE;
+
+#define LAYOUT_TITLE_DEFAULTS	lpg_layout_obj_title_default_container
+#define lpg_LAYOUT_TITLE_DEFAULTS { \
+	1,				\
+	0.0,			\
+	15.5,			\
+	15.0,			\
+	 2.0,			\
+	10,				\
+	1,				\
+	LAYOUT_ATTRIBUTES_ID_STANDARD_TITLE,				\
+	LayoutStructTypeTitle,	\
+	STRUCT_INIT_VAL }
+
+/* -------------------------------------------------------- */
+/* PARAMETERS												*/
+/* -------------------------------------------------------- */
+
+typedef struct lpg_layout_obj_parameters {
+	int dataSetNumber;		// no. of dataset in list to be used
+	double xPos;			// position and dimension in cm
+	double yPos;
+	double xDim;
+	double yDim;
+	int fontSize;			// font size in pt
+	int allowAutomaticFontResize;	// 1 = yes, 0 = no
+	int attributeId;		// ID of attribute set to be used
+	int showSignature;		// 1 = yes, 0 = no
+	int warnMissingSignature;
+	int warnInvalidSignature;
+	LayoutStructType structType;
+	STRUCT_INIT_CHECK;
+} LAYOUT_OBJ_PARAMETERS;
+
+#define LAYOUT_PARAMETERS_DEFAULTS	lpg_layout_obj_parameters_default_container
+#define lpg_LAYOUT_PARAMETERS_DEFAULTS {	\
+	1,			\
+	19.740,		\
+	0.0,		\
+	5.200,		\
+	16.300,		\
+	10,			\
+	1,			\
+	LAYOUT_ATTRIBUTES_ID_STANDARD_PARAMETERS,			\
+	/* showSignature =	*/			1,			\
+	/* warnMissingSignature = */	0,			\
+	/* warnInvalidSignature	= */	0,			\
+	LayoutStructTypeParameters,					\
+	STRUCT_INIT_VAL	}
+
+/* -------------------------------------------------------- */
+/* LINE														*/
+/* -------------------------------------------------------- */
+typedef struct lpg_layout_obj_line {
+	double xBegin;			// coordinates in cm
+	double yBegin;
+	double xEnd;
+	double yEnd;
+	double tipWidth;		// tip width in cm if line has arrow end(s)
+	LayoutArrowType arrowType;	// use related enum values
+	int attributeId;		// ID of attribute set to be used
+	LayoutStructType structType;
+	STRUCT_INIT_CHECK;
+} LAYOUT_OBJ_LINE;
+
+#define LAYOUT_LINE_DEFAULTS	lpg_layout_obj_line_default_container
+#define lpg_LAYOUT_LINE_DEFAULTS  {		\
+	0.0,	0.0,					\
+	1.0,	1.0,					\
+	1.0,							\
+	LayoutArrowTypeNoTip,			\
+	LAYOUT_ATTRIBUTES_ID_STANDARD_TEXT,								\
+	LayoutStructTypeLine,					\
+	STRUCT_INIT_VAL	}
+
+/* -------------------------------------------------------- */
+/* RECTANGLE												*/
+/* -------------------------------------------------------- */
+
+typedef struct lpg_layout_obj_rectangle {
+	double xPos;			// position and dimension in cm
+	double yPos;
+	double xDim;
+	double yDim;
+	int attributeId;		// ID of attribute set to be used
+	LayoutStructType structType;
+	STRUCT_INIT_CHECK;
+} LAYOUT_OBJ_RECTANGLE;
+
+#define LAYOUT_RECTANGLE_DEFAULTS	lpg_layout_obj_rectangle_default_container
+#define lpg_LAYOUT_RECTANGLE_DEFAULTS {	\
+	0.0,		\
+	0.0,		\
+	1.0,		\
+	1.0,		\
+	LAYOUT_ATTRIBUTES_ID_STANDARD_TEXT,			\
+	LayoutStructTypeRectangle,					\
+	STRUCT_INIT_VAL }
+
+/* -------------------------------------------------------- */
+/* ELLIPSE													*/
+/* -------------------------------------------------------- */
+
+typedef struct lpg_layout_obj_ellipse {
+	double xCenter;			// coordinates in cm
+	double yCenter;
+	double xRadius;
+	double yRadius;
+	int attributeId;		// ID of attribute set to be used
+	LayoutStructType structType;
+	STRUCT_INIT_CHECK;
+} LAYOUT_OBJ_ELLIPSE;
+
+#define LAYOUT_ELLIPSE_DEFAULTS	lpg_layout_obj_ellipse_default_container
+#define lpg_LAYOUT_ELLIPSE_DEFAULTS {	\
+	0.0,		\
+	0.0,		\
+	1.0,		\
+	1.0,		\
+	LAYOUT_ATTRIBUTES_ID_STANDARD_TEXT,			\
+	LayoutStructTypeEllipse,					\
+	STRUCT_INIT_VAL	}	
+
+/* -------------------------------------------------------- */
+/* TEXT														*/
+/* -------------------------------------------------------- */
+
+typedef struct lpg_layout_obj_text {
+	double xPos;			// position and dimension in cm
+	double yPos;
+	double xDim;
+	double yDim;
+	int fontSize;			// font size in pt
+	int allowAutomaticFontResize;	// 1 = yes, 0 = no
+	int attributeId;		// ID of attribute set to be used
+	char* content;			// pointer to character array defining text
+	LayoutStructType structType;
+	STRUCT_INIT_CHECK;
+} LAYOUT_OBJ_TEXT;
+
+#define LAYOUT_TEXT_DEFAULTS	lpg_layout_obj_text_default_container
+#define lpg_LAYOUT_TEXT_DEFAULTS {	\
+	1.0,			\
+	14.500,			\
+	15.000, 		\
+	1.000,  		\
+	8,				\
+	1,				\
+	LAYOUT_ATTRIBUTES_ID_STANDARD_TEXT,				\
+	"",				\
+	LayoutStructTypeText,	\
+	STRUCT_INIT_VAL	\
+	}
+
+/* -------------------------------------------------------- */
+/* METAFILE														*/
+/* -------------------------------------------------------- */
+
+typedef struct lpg_layout_obj_metafile {
+	int dataSetNumber;		// no. of dataset in list to be used
+	int attributeId;		// ID of attribute set to be used
+	double xPos;			// position and dimension in cm
+	double yPos;
+	double xDim;
+	double yDim;
+	LayoutObjectAngle angle;
+	char* filename;			// pointer to character array defining filename of metafile
+	int alwaysResizeGraphics;	// 1 = yes, 0 = no
+	int whenResizedKeepAspectRatio;	// 1 = yes, 0 = no
+	LayoutStructType structType;
+	STRUCT_INIT_CHECK;
+} LAYOUT_OBJ_METAFILE;
+
+#define LAYOUT_METAFILE_DEFAULTS	lpg_layout_obj_metafile_default_container
+#define lpg_LAYOUT_METAFILE_DEFAULTS {	\
+	1,			\
+	LAYOUT_ATTRIBUTES_ID_STANDARD_TEXT,			\
+	21.0,			\
+	0.8,			\
+	2.7, 			\
+	1.8,  			\
+	0,			\
+	"c:/bruker/tsa/plot/meta/bruker.wmf",	\
+	1,			\
+	1,			\
+	LayoutStructTypeMetafile,	\
+	STRUCT_INIT_VAL	\
+	}
+
+/* -------------------------------------------------------- */
+/* NMR TEXT														*/
+/* -------------------------------------------------------- */
+
+typedef struct lpg_layout_obj_nmrtext {
+	int dataSetNumber;		// no. of dataset in list to be used
+	double xPos;			// position and dimension in cm
+	double yPos;
+	double xDim;
+	double yDim;
+	int fontSize;			// font size in pt
+	int attributeId;
+	int allowAutomaticFontResize;	// 1 = yes, 0 = no
+	char* filename;			// pointer to character array defining filename of metafile
+	LayoutStructType structType;
+	STRUCT_INIT_CHECK;
+} LAYOUT_OBJ_NMRTEXT;
+
+#define LAYOUT_NMRTEXT_DEFAULTS	lpg_layout_obj_nmrtext_default_container
+#define lpg_LAYOUT_NMRTEXT_DEFAULTS {	\
+	1,			\
+	21.0,			\
+	5.0,			\
+	3.7, 			\
+	3.0,  			\
+	8,			\
+	LAYOUT_ATTRIBUTES_ID_STANDARD_TEXT,			\
+	0,			\
+	"+/info.txt",	\
+	LayoutStructTypeNMRText,	\
+	STRUCT_INIT_VAL	\
+	}
+/* -------------------------------------------------------- */
+/* 1D														*/
+/* -------------------------------------------------------- */
+typedef struct lpg_layout_obj_1d {
+	double xPos;				// position and dimension in cm
+	double yPos;
+	double xDim;
+	double yDim;
+	LayoutObjectAngle angle;		// use related enum values
+
+	int dataSetNumber;			// # in dataset list this object will show
+	double xMin;				// limits of x axis
+	double xMax;
+	double yMin;				// limits of y axis (intensity)
+	double yMax;
+	double integralYMin;			// limits of y axis for integrals
+	double integralYMax;
+
+	int axisLeft;				// 1 = show, 0 = hide
+	int axisBottom;
+	int axisRight;
+	int axisTop;
+	int gridX;				// 1 = show, 0 = hide
+	int gridY;
+
+	LayoutAxisUnit axisUnit;		// use related enum values for ppm, Hz, Points
+	double offsetXAxis;			// offset in cm
+	double offsetYAxis;
+	int keepTicksFixedXAxis;		// 1 = yes, 0 = no
+	int keepTicksFixedYAxis;		// 1 = yes, 0 = no
+	double tickDistanceXAxis;		// only effective if ticks are fixed
+	double tickDistanceYAxis;		// only effective if ticks are fixed
+	int labelStepXAxis;				// only effective if ticks are fixed
+	int labelStepYAxis;				// only effective if ticks are fixed
+	char formatLabelsXAxis[128];	// only effective if ticks are fixed
+	char formatLabelsYAxis[128];	// only effective if ticks are fixed
+	int scaleBoundingBox;			// 1 = yes, 0 = no
+	int drawBoxAroundCurve;			// 1 = yes, 0 = no
+
+	int showIntegralLabels;			// 1 = yes, 0 = no
+	int showIntegralTraces;
+	int showIntegralLabelsAboveAxis;
+	char integralFormat[128];		// format like in dialog box
+	int showPeaks;				// 1 = yes, 0 = no
+	int showPeakMarks;
+	char peakFormat[128];			// format like in dialog box
+	LayoutAxisUnit peaksUnit;		// use related enum values for ppm, Hz, Points
+	LayoutPeakAnnotationMode peakAnnotationMode; //	use related enum values for peaks/annotation/both
+	int curveAttributeId;			// ID of attribute set to be used
+	int axisAttributeId;
+	int gridAttributeId;
+	int integralsAttributeId;
+	int peaksAttributeId;
+	int showScalingInfo;
+	int scalingAttributeId;
+
+	LayoutResetActionAxis	   resetActionX;	// use related enum values
+	LayoutResetActionIntensity resetActionY;
+	int keepBaselineFixed;			// 1 = yes, 0 = no
+	double baselineOffsetPercent;		
+	int keepIntegralsFixed;
+	double integralsOffsetPercent;
+	int useRegionFile;
+	LayoutResetRegionType regionType;	// use related enum values
+	LayoutScalingAfterResetType scalingAfterResetType;
+	double scalingAfterResetPercent;
+	double scalingAfterResetCm;
+	int setIntegralsHeightAfterReset; // 1 = yes, 0 = no
+	double integralsHeightAfterResetCm;
+	LayoutStructType structType;
+	STRUCT_INIT_CHECK;
+} LAYOUT_OBJ_1D;
+
+#define LAYOUT_1D_DEFAULTS	lpg_layout_obj_1d_default_container
+#define lpg_LAYOUT_1D_DEFAULTS	{ 					\
+	/* xPos				*/ 	0,			\
+	/* yPos				*/	2.900,		\
+	/* xDim				*/	19.740, 	\
+	/* yDim				*/	11.900, 	\
+	/* angle			*/	LayoutObjectAngleStandard,		\
+												\
+	/* dataSetNumber		*/	1,			\
+	/* xMin				*/	200.0,		\
+	/* xMax				*/	-10.0,		\
+	/* yMin				*/	-10.0,		\
+	/* yMax				*/	100000.0,	\
+	/* integralYMin			*/	-10.0,		\
+	/* integralYMax			*/	1000000.0,	\
+												\
+	/* axisLeft			*/	0, 			\
+	/* axisBottom			*/	1,			\
+	/* axisRight			*/	0,			\
+	/* axisTop			*/	0,			\
+	/* gridX			*/	0,			\
+	/* gridY			*/	0,			\
+												\
+	/* axisUnit			*/	LayoutAxisUnitPPM,				\
+	/* offsetXAxis			*/	0.2,		\
+	/* offsetYAxis			*/	0.2,		\
+	/* keepTicksFixedXAxis		*/ 0,		\
+	/* keepTicksFixedYAxis		*/ 0,		\
+	/* tickDistanceXAxis		*/	0.1,		\
+	/* tickDistanceYAxis		*/	100000,		\
+	/* labelStepXAxis		*/	5,		\
+	/* labelStepYAxis		*/	5,		\
+	/* formatLabelsXAxis		*/	"%.0f",		\
+	/* formatLabelsYAxis		*/	"%.1e",		\
+	/* scaleBoundingBox		*/	0,			\
+	/* drawBoxAroundCurve		*/	0,			\
+												\
+	/* showIntegralLabels		*/	1,			\
+	/* showIntegralTraces		*/	1,			\
+	/* showIntegralLabelsAboveAxis */ 0,		\
+	/* integralFormat		*/	"%.2f",		\
+	/* showPeaks			*/	1,			\
+	/* showPeakMarks		*/	1,			\
+	/* peakFormat			*/ 	"%.2f",		\
+	/* peaksUnit			*/	LayoutAxisUnitPPM,		\
+	/* peakAnnotationMode	*/	LayoutPeakAnnotationModePosition,			\
+   	/* curveAttributeId		*/	LAYOUT_ATTRIBUTES_ID_STANDARD_DATA,			\
+	/* axisAttributeId		*/	LAYOUT_ATTRIBUTES_ID_STANDARD_AXIS,			\
+	/* gridAttributeId		*/	LAYOUT_ATTRIBUTES_ID_STANDARD_GRID,			\
+   	/* integralsAttributeId		*/	LAYOUT_ATTRIBUTES_ID_STANDARD_INTEGRALS,			\
+   	/* peaksAttributeId		*/	LAYOUT_ATTRIBUTES_ID_STANDARD_PEAKS,			\
+	/* showScalingInfo		*/	1,			\
+	/* scalingAttributeId		*/	LAYOUT_ATTRIBUTES_ID_STANDARD_TEXT,			\
+												\
+	/* resetActionX			*/	LayoutResetActionAxisSetToMinMax,	\
+	/* resetActionY			*/	LayoutResetActionIntensitySetToMinMaxBetweenRange,   \
+	/* keepBaselineFixed		*/	0,			\
+	/* baselineOffsetPercent	*/	4.5454545,	\
+	/* keepIntegralsFixed		*/	0,			\
+	/* integralsOffsetPercent	*/	4.5454545,	\
+	/* useRegionFile		*/	0,			\
+	/* regionType			*/	LayoutResetRegionTypeSREGLST,		    \
+	/* scalingAfterResetType	*/	LayoutScalingAfterResetTypePercent,		\
+	/* scalingAfterResetPercent	*/	100.0,		\
+	/* scalingAfterResetCm		*/	10.0,		\
+	/* setIntegralsHeightAfterReset */ 0,		\
+	/* integralsHeightAfterResetCm  */ 10.0,	\
+	LayoutStructType1d,							\
+	STRUCT_INIT_VAL	}
+
+/* -------------------------------------------------------- */
+/* 2D														*/
+/* -------------------------------------------------------- */
+typedef struct lpg_layout_obj_2d_projection {
+	int enabled;
+	int dataSetNumber;
+	double size;
+	LayoutResetActionIntensity resetAction;
+	int useRegionFile;
+	LayoutResetRegionType regionType;	// use related enum values
+	LayoutScalingAfterResetType scalingAfterResetType;
+	double scalingAfterResetPercent;
+	double scalingAfterResetCm;
+	LayoutStructType structType;
+	STRUCT_INIT_CHECK;
+} LAYOUT_2D_PROJECTION;
+
+#define LAYOUT_2D_PROJECTION_DEFAULTS_TOP {	\
+	/* enabled		    */  1,	    \
+	/* dataSetNumber	    */	2,	    \
+	/* size			    */	2.0,	    \
+	/* resetAction		    */	LayoutResetActionIntensitySetToMinMaxBetweenRange,    \
+	/* useRegionFile	    */	1,	    \
+	/* regionType		    */	LayoutResetRegionTypeSREGLST,	\
+	/* scalingAfterResetType    */	LayoutScalingAfterResetTypePercent, \
+	/* scalingAfterResetPercent */	100.0,	    \
+	/* scalineAfterResetCm	    */	10.0,	    \
+	LayoutStructType2dProjection,		    \
+	STRUCT_INIT_VAL	}
+
+#define LAYOUT_2D_PROJECTION_DEFAULTS_LEFT {	\
+	/* enabled		    */  1,	    \
+	/* dataSetNumber	    */	3,	    \
+	/* size			    */	2.0,	    \
+	/* resetAction		    */	LayoutResetActionIntensitySetToMinMaxBetweenRange,    \
+	/* useRegionFile	    */	1,	    \
+	/* regionType		    */	LayoutResetRegionTypeSREGLST,	\
+	/* scalingAfterResetType    */	LayoutScalingAfterResetTypePercent, \
+	/* scalingAfterResetPercent */	100.0,	    \
+	/* scalineAfterResetCm	    */	10.0,	    \
+	LayoutStructType2dProjection,		    \
+	STRUCT_INIT_VAL	}
+
+#define LAYOUT_2D_PROJECTION_DEFAULTS_OFF {	\
+	/* enabled		    */  0,	    \
+	/* dataSetNumber	    */	2,	    \
+	/* size			    */	2.0,	    \
+	/* resetAction		    */	LayoutResetActionIntensitySetToMinMaxBetweenRange,    \
+	/* useRegionFile	    */	1,	    \
+	/* regionType		    */	LayoutResetRegionTypeSREGLST,	\
+	/* scalingAfterResetType    */	LayoutScalingAfterResetTypePercent, \
+	/* scalingAfterResetPercent */	100.0,	    \
+	/* scalingAfterResetCm	    */	10.0,	    \
+	LayoutStructType2dProjection,		    \
+	STRUCT_INIT_VAL	}
+
+typedef struct lpg_layout_obj_2d {
+	double xPos;				// position and dimension in cm
+	double yPos;
+	double xDim;
+	double yDim;
+	LayoutObjectAngle angle;		// use related enum values
+
+	int dataSetNumber;			// # in dataset list this object will show
+	double xMin;				// limits of x axis
+	double xMax;
+	double yMin;				// limits of y axis (intensity)
+	double yMax;
+
+	int axisLeft;				// 1 = show, 0 = hide
+	int axisBottom;
+	int axisRight;
+	int axisTop;
+	int gridX;				// 1 = show, 0 = hide
+	int gridY;
+
+	LayoutAxisUnit axisUnitX;    		// use related enum values for ppm, Hz, Points
+	LayoutAxisUnit axisUnitY;    		// use related enum values for ppm, Hz, Points
+	double offsetXAxis;			// offset in cm
+	double offsetYAxis;
+	int keepTicksFixedXAxis;		// 1 = yes, 0 = no
+	int keepTicksFixedYAxis;		// 1 = yes, 0 = no
+	double tickDistanceXAxis;		// only effective if ticks are fixed
+	double tickDistanceYAxis;		// only effective if ticks are fixed
+	int labelStepXAxis;			// only effective if ticks are fixed
+	int labelStepYAxis;			// only effective if ticks are fixed
+	char formatLabelsXAxis[128];		// only effective if ticks are fixed
+	char formatLabelsYAxis[128];		// only effective if ticks are fixed
+	int scaleBoundingBox;			// 1 = yes, 0 = no
+	int drawBoxAroundCurve;			// 1 = yes, 0 = no
+
+	int curveAttributeId;			// ID of attribute set to be used
+	int axisAttributeId;
+	int gridAttributeId;
+	int projAttributeId;			// ID of attribute set for the four projections
+
+	int numContourLevels;			// number of contour levels shown
+	int contourLevel[64];			// intensities at which levels are drawn
+	int contourLevelAttributeId[64];	// ID of attribute set to be used for each level
+
+	LAYOUT_2D_PROJECTION projTop;		// settings for each projection
+	LAYOUT_2D_PROJECTION projLeft;
+	LAYOUT_2D_PROJECTION projBottom;
+	LAYOUT_2D_PROJECTION projRight;
+
+	LayoutResetActionAxis	   resetActionX;
+	LayoutResetActionIntensity resetActionY;
+	LayoutStructType structType;
+	STRUCT_INIT_CHECK;
+} LAYOUT_OBJ_2D;
+
+#define LAYOUT_2D_DEFAULTS	lpg_layout_obj_2d_default_container
+#define lpg_LAYOUT_2D_DEFAULTS 	{ 	\
+	/* xPos				*/ 	4.0,			\
+	/* yPos				*/	1.00,		\
+	/* xDim				*/	14.20, 	\
+	/* yDim				*/	14.20, 	\
+	/* angle			*/	LayoutObjectAngleStandard,		\
+												\
+	/* dataSetNumber		*/	1,			\
+	/* xMin				*/	10.0,		\
+	/* xMax				*/	-1.0,		\
+	/* yMin				*/	10.0,		\
+	/* yMax				*/	-1.0,	\
+									\
+	/* axisLeft			*/	1, 			\
+	/* axisBottom			*/	1,			\
+	/* axisRight			*/	0,			\
+	/* axisTop			*/	0,			\
+	/* gridX			*/	0,			\
+	/* gridY			*/	0,			\
+												\
+	/* axisUnitX			*/	LayoutAxisUnitPPM,				\
+	/* axisUnitY			*/	LayoutAxisUnitPPM,				\
+	/* offsetXAxis			*/	0.0,		\
+	/* offsetYAxis			*/	0.0,		\
+	/* keepTicksFixedXAxis		*/ 0,		\
+	/* keepTicksFixedYAxis		*/ 0,		\
+	/* tickDistanceXAxis		*/	0.1,		\
+	/* tickDistanceYAxis		*/	0.1,		\
+	/* labelStepXAxis		*/	5,		\
+	/* labelStepYAxis		*/	5,		\
+	/* formatLabelsXAxis		*/	"%.1f",		\
+	/* formatLabelsYAxis		*/	"%.1f",		\
+	/* scaleBoundingBox		*/	0,			\
+	/* drawBoxAroundCurve		*/	1,			\
+									\
+   	/* curveAttributeId		*/	LAYOUT_ATTRIBUTES_ID_STANDARD_CONTOUR_LEVEL,			\
+	/* axisAttributeId		*/	LAYOUT_ATTRIBUTES_ID_STANDARD_AXIS,			\
+	/* gridAttributeId		*/	LAYOUT_ATTRIBUTES_ID_STANDARD_GRID,			\
+   	/* projAttributeId		*/	LAYOUT_ATTRIBUTES_ID_STANDARD_DATA,			\
+									\
+	/* numContourLevels		*/	2,			\
+	/* contourLevel[]		*/	{-100000, 100000, 0,0,0,0,0,0,  0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, \
+						 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0}, \
+	/* contourLevelAttributeId[]	*/	{19,19,19,19,19,19,19,19, 19,19,19,19,19,19,19,19, 19,19,19,19,19,19,19,19, 19,19,19,19,19,19,19,19,\
+						 19,19,19,19,19,19,19,19, 19,19,19,19,19,19,19,19, 19,19,19,19,19,19,19,19, 19,19,19,19,19,19,19,19}, \
+	/* projTop			*/	LAYOUT_2D_PROJECTION_DEFAULTS_TOP,	\
+	/* projLeft			*/	LAYOUT_2D_PROJECTION_DEFAULTS_LEFT,	\
+	/* projBottom			*/	LAYOUT_2D_PROJECTION_DEFAULTS_OFF,	\
+	/* projRight			*/	LAYOUT_2D_PROJECTION_DEFAULTS_OFF,	\
+										\
+	/* resetActionX			*/	LayoutResetActionAxisSetToMinMax,	\
+	/* resetActionY			*/	LayoutResetActionAxisSetToMinMax,	\
+	LayoutStructType2d,							\
+	STRUCT_INIT_VAL	}
+
+#endif // LAYOUT_PACKAGE_H_INCLUDED

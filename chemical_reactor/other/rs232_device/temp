@@ -1,0 +1,8 @@
+# TOPSPIN ts_3_0 TTY configuration file
+# created automatically by 'cf'
+# do not edit, changes are lost after next 'cf'
+unit   = Eurotherm VTU
+host   = 149.236.99.249
+device = /dev/tty05
+type   = RS232
+stty   = 9600 time 5 parenb cs7 cread clocal istrip

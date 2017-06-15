@@ -1,0 +1,27 @@
+/********************-*-C++-*-****************************************
+*
+* $Source: /sc/CvsTree/sc/gen/src/prg/makeau/inc/depthead,v $
+*
+* Copyright (c) 1995
+* BRUKER BIOSPIN GMBH
+* D-76287 Rheinstetten, Germany
+*
+* All Rights Reserved
+*
+*
+* $Id: depthead,v 1.9 2007/12/05 16:33:57 ge Exp $
+*
+********************************************************************
+*/
+/***** header for au programs with dept analysis *******/
+
+#define	DEPTSZ	250
+#define	DEPTPL	80
+
+int	i, isave = 0, is90 = 0, is135 = 0;
+float	FO[DEPTSZ +1],	BB[DEPTSZ +1],	D90[DEPTSZ +1],	I90[DEPTSZ +1];
+float	D135[DEPTSZ +1],	I135[DEPTSZ +1],	pmax , pmax1;
+float   fakt;
+char	M[DEPTSZ +1],	path[DEPTPL],	dept90[DEPTPL],	dept135[DEPTPL];
+char	a[120],	solvent[20],	nucleus[20];
+FILE	*fptr;

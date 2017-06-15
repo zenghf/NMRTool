@@ -1,0 +1,150 @@
+;hzp_zg
+;zg for use with parahydrogen polariser version v3
+;by default, the parahydrogen polarization experiments are performed in the following order
+;1: user loads the sample to the mixing chamber by clicking the button "load"
+;2: execute the pulse sequence
+;   a. use parahydrgoen to polarize the sample for a specifit time,
+;   b. then transfer the sample to the flowcell for NMR measurement;
+;   c. apply pulses, gradients and delays, and measure a spectrum
+;   d. transfer back the sample from the flowcell to the mixing chamber
+;3: user empties the mixing chamber by clicking the button "Empty" or "Empty save sample"
+; Haifeng Zeng 05/29/2012
+;$CLASS=HighRes
+;$DIM=1D
+;#define POL
+#include <Avance.incl>
+#include <Grad.incl>
+#   ifdef POL
+#include <Polariser.incl>
+#   else
+#   endif 
+
+"acqt0=-p1*2/3.1416"
+define delay Time_IJP
+"Time_IJP=d40"
+define delay Time_BH2
+"Time_BH2=d41"
+define delay Time_EJP
+"Time_EJP=d42"
+define delay Time_IJS
+"Time_IJS=d43"
+define delay Time_EJS
+"Time_EJS=d44"
+define delay RD_time
+"RD_time=d45-(d11+d1+d40+d41+d42+aq)"
+define delay pol_field
+;"cnst31 = d31"
+"pol_field = abs(cnst31)"
+
+1 ze
+
+#   ifdef POL
+	subr IPSO_CMD()						;force to ipso mode
+	F__IN_MIX_CHAMBER 				;Sample is in the polariser	
+#   else
+#   endif 
+
+2 d11
+
+#   ifdef POL
+	RD_time										;recovery time
+  subr BUBBLE_H2() 					; bubble H2 para in the sample.
+  Time_BH2									; duration of the bubble
+  subr STOP_EVEN()					; stop of bubble
+
+  subr INJECT_PROBE() 			; transfer sample from polariser to probe.
+  Time_IJP									; delay for loading sample from the polariser to the flowcell.
+#   else
+#   endif 
+
+  d1 
+ 
+  50u UNBLKGRAD
+
+3 1u
+  100u pl0:f1
+  (p11:sp1 ph2:r):f1
+  p16:gp1
+  200u
+
+  1u
+  100u pl0:f1
+  (p11:sp1 ph2:r):f1
+  p16:gp2
+  200u
+
+  1u
+  100u pl0:f1
+  (p11:sp1 ph2:r):f1
+  p16:gp3
+  200u
+
+;lo to 3 times l1
+
+4 1u
+  100u pl0:f1
+  (p11:sp2 ph2:r):f1
+  p16:gp1
+  200u
+
+  1u
+  100u pl0:f1
+  (p11:sp2 ph2:r):f1
+  p16:gp2
+  200u
+
+  1u
+  100u pl0:f1
+  (p11:sp2 ph2:r):f1
+  p16:gp3
+  200u
+
+;lo to 4 times l1
+
+5 1u
+  100u pl0:f1
+  (p11:sp3 ph2:r):f1
+  p16:gp1
+  200u
+
+  1u
+  100u pl0:f1
+  (p11:sp3 ph2:r):f1
+  p16:gp2
+  200u
+
+  1u
+  100u pl0:f1
+  (p11:sp3 ph2:r):f1
+  p16:gp3
+  200u
+
+lo to 3 times l1
+
+  4u BLKGRAD
+  10u pl1:f1
+  p1 ph1
+  go=2 ph31
+  30m mc #0 to 2 F0(zd)
+
+
+exit
+
+ph1=0 2
+ph2=0 0 1 1 2 2 3 3 
+ph3=2 2 3 3 0 0 1 1
+ph31=0 2 2 0
+ 
+
+;d1 : relaxation delay; set to very short for hyperpolarisation experiments 
+;d11: delay for disk I/O                                    [30 msec]
+;ns : number of scans: set to = 1 for hyperpolarisation experiments
+;d40: delay for loading sample from the polariser to the flowcell
+;d41: duration of the bubbling of parahydrogen 
+;d42: delay for returning sample from the flowcell to the polarizer
+;d43: delay for loading sample from the vial to the polarizer
+;d44: delay for emptying sample from the polarizer to  the vial
+;d45: delay betweem scans
+;l0 : accumulate L0 scans; re-polarising between scans
+;ns : 1
+;cnst31: polarization magnetic field

@@ -1,0 +1,161 @@
+/****************************************************************/
+/* MTRF: Performs "trf" on several datasets                     */
+/****************************************************************/
+/* Short Description :                                          */
+/* Performs "trf" on several datasets                           */
+/****************************************************************/
+/* SYNTAX: xau mtrf expmask procno keep_phc                     */
+/*                                                              */
+/* EXAMPLE:  xau trfb 3?01 1 1                                  */
+/*  Perform trf-command on all datasets in the                  */
+/*  current experimentname matching the mask.                   */
+/*                                                              */
+/* PARAMETERS: expmask = string, 5[123] = 51, 52, 53            */
+/*      5? = 50-59 (existing expno)                             */
+/*  procno = integer, procno, defaults to 1                     */
+/*  keep_phc= copy all parameters, except PHC0+PHC1             */
+/*    and SR (calibration)                                      */
+/*     1 means keep (def.), 0 means copy                        */
+/****************************************************************/
+/* Nils Nyberg, CRC, 2005-08-15                                 */
+/* 2007-04-02: Modified from mxfb to mtrf (nn, dfu)             */
+/* 2007-04-18: Introduced keep_phc                              */
+/* 2008-03-26: keep_phc also keeps individual SR                */
+/* 2010-09-07: Runs under TopSpin3                              */
+/****************************************************************/
+
+#define MAXEXP 512
+#define TMPFILE "tmpmtrf"
+
+int toprocno;
+int noofexp, nargs;
+int startexpno, startprocno, startparmode;
+int keep_phc;
+float phc0, phc1, sr;
+
+int  parmode[MAXEXP],
+ sourceexpno[MAXEXP];
+
+char explist[MAXEXP][PATH_MAX];
+
+char path[PATH_MAX],mask[32],**list;
+
+
+
+
+GETCURDATA
+
+/* Get arguments */
+
+nargs = sscanf(cmd,"%s %d %d",&mask,&toprocno,&keep_phc);
+
+switch (nargs)
+ {
+ default:
+ case -1:
+ case 0:
+  sprintf(mask,"%d",expno);
+  GETSTRING("Enter file-mask for expnos to process: ", mask);
+
+  toprocno = 1;
+  GETINT("Enter target procno: ", toprocno);
+
+  keep_phc = 0;
+  GETINT("Keep individual phase params? [1=yes, 0=no] ", keep_phc);
+
+  break;
+
+ case 1:
+  toprocno = 1;
+  keep_phc = 1;
+  break;
+ }
+
+(void)sprintf(text,"Mask = %s, to_procno = %d, keep_phc = %d",mask, toprocno, keep_phc);
+Show_status(text);
+
+
+
+/* List experiment numbers that matches the file mask */
+
+/* Pre TopSpin3 */
+/* (void)sprintf(path,"%s/data/%s/nmr/%s/",disk,user,name);  */
+(void)sprintf(path,"%s",ACQUPATH(".."));
+
+noofexp=getdir(path,&list,mask);
+if (noofexp == 0 || noofexp > MAXEXP)
+ {
+ (void)sprintf(text,"%d experiments found... ", noofexp);
+ Proc_err(DEF_ERR_OPT,text);
+ ABORT
+ }
+
+
+/* Check the parmods */
+
+FETCHPAR("PARMODE",&startparmode);
+startexpno = expno;
+startprocno = procno;
+
+for (i1 = 0; i1 < noofexp; i1++)
+ {
+ Show_status(list[i1]);
+
+ if (nargs = sscanf(list[i1],"%d", &sourceexpno[i1]) < 1) {ABORT};
+
+ DATASET(name, sourceexpno[i1], 1, disk, user);
+ FETCHPAR("PARMODE",&parmode[i1]);
+ }
+
+
+for (i1 = 0; i1 < noofexp; i1++)
+ {
+ if (parmode[i1] != startparmode)
+  {
+  (void)sprintf(text,"Expno %d does not have the same dimensions as %d",
+     sourceexpno[i1], startexpno);
+  Proc_err(INFO_OPT,text);
+  for (i2 = 0; i2 < noofexp; i2++)
+   {
+   (void)sprintf(explist[i2],"%d: parmode = %d\n",
+    sourceexpno[i2], parmode[i2]);
+   printf(explist[i2]);
+   }
+  ABORT;
+  }
+ }
+
+/* Copy the current processing parameters */
+DATASET(name, startexpno, startprocno, disk, user);
+WPAR(TMPFILE,"proc");
+
+
+/* Run through the list of experiments and do the processing */
+(void)sprintf(text,"TRF (as expno = %d) on:\n", startexpno);
+for (i1 = 0; i1 < noofexp; i1++)
+ {
+ DATASET(name, sourceexpno[i1], toprocno, disk, user);
+ if (keep_phc)
+  {
+  FETCHPAR("PHC0",&phc0)
+  FETCHPAR("PHC1",&phc1)
+  FETCHPAR("SR",&sr)
+  };
+ RPAR(TMPFILE,"proc");
+ if (keep_phc)
+  {
+  STOREPAR("PHC0",phc0)
+  STOREPAR("PHC1",phc1)
+  STOREPAR("SR",sr)
+  };
+ EFP;
+ ABS;
+ (void)sprintf(text,"%s %d ",text,sourceexpno[i1]);
+ Show_status(text);
+ }
+
+/* Delete temp. processing parameters */
+DELPAR(TMPFILE);
+
+/* Notify the expnos the trf was performed on */
+QUITMSG(text);

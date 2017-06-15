@@ -1,0 +1,196 @@
+/*** ^^A -*-C++-*- **********************************************/
+/*	zgp		          			*/
+/****************************************************************/
+/*	Short Description :					*/
+/*	Performs parahydrogen polarization experiment	*/
+/*      Set the polariser field value from CNST31               */
+/****************************************************************/
+/*	Keywords :						*/
+/*	parahydrogen					*/
+/****************************************************************/
+/*	Description/Usage :					*/
+/*	This AU program performs one parahydrogen polarization */
+/*     experiment*/
+/*  The polariser field value for the polariser is set      */
+/*      from pulse program constant name ex. CNST31 prior to    */
+/*	execution of the experiment.       			*/
+/*	Thhe magnetic field of the parahydrogen polariser will  */
+/*      be set by polarize command: #H1:GA=value		*/
+/****************************************************************/
+/*	Author(s) :						*/
+/*	Name		: Haifeng Zeng			*/
+/*	Organisation	: JHMI			*/
+/*	Email		: hzeng6@jhmi.edu*/
+/****************************************************************/
+/*	Name		Date	Modification:			*/
+/*  hz  		Aug-14-2012  created 			*/
+/****************************************************************/
+/*
+$Id: multizg_ph_b0,v 1.2 2012/03/13 13:27:27 hb Exp $
+*/
+
+AUERR = optmag(curdat, cmd);
+QUIT
+
+#include <inc/hz_polarize>
+
+
+int optmag(const char* curdat, const char* cmd)
+{
+    char *envpnt, statusline[1024], message[1024], text[PATH_MAX+400], line_buffer[BUFSIZ];
+    char *answer;
+    int expTime, zgsafety;
+    FILE *titlefp, *pFile;;
+
+    int startExpno = expno;
+    char debugmessage[1024];
+    char constantVariable[] = "CNST 31";
+    float maxPolField=148;
+
+    /****************************************************************/
+ 
+    char strFields[1024];
+    strcpy(strFields, "0,20,40,50,60,65,70,80,90,100,120");
+    GETSTRING("Please input the magnetic fields to run experiments",strFields)
+
+
+/*
+	(void)sprintf(text, "Number of experiments: %d\n"
+		      "field: %.2f\nfieldIncrement: %.2f\n"
+		      "Continue ? [y | n]",
+		      i1, polField, polFieldInc );
+	answer=Gets(text, "y");
+	if ((answer == 0) || (answer[0]=='n'))
+	    ABORT
+*/
+    char strTrimFields[1024], strSection[32];
+    float fields[128];
+    int i, j, k, nField;
+    char *p, *p2;
+    float m1, m2, m3, maxField, minField;
+    
+    i = 0;
+    j = 0;
+    for(k=0;k<strlen(strFields);k++)
+    {
+        if(!isspace(strFields[k]))
+        {
+            strTrimFields[j] = strFields[k];
+            j++;
+        }
+        if(strFields[k] == ',') i++;
+    }
+    strTrimFields[j] = '\0';
+    /*printf(strTrimFields);/**/
+    p = strTrimFields;
+    k = 0;
+    do
+    {
+        /*printf("***%s\n",p);/**/
+        p2 = strchr(p, ',');
+        if (p2 == NULL)
+            strcpy(strSection, p);
+        else
+        {
+            strncpy(strSection, p, p2-p);
+            strSection[p2-p] = '\0';
+            p = p2 + 1;
+        }
+        /*printf("###%s\n",strSection);/**/
+        if(strchr(strSection,':') == NULL)
+        {
+            sscanf(strSection, "%f", &m1);
+            fields[k] = m1;
+            k++;
+            /*printf("--%.2f\n",m1);/**/
+        }   
+        else
+        {
+            sscanf(strSection,"%f:%f:%f",&m1, &m2, &m3);
+            /*printf("**%.2f: %.2f: %.2f\n",m1, m2, m3);/**/
+            j = (int)((m3-m1) / m2 + 0.5);
+            if(j>=0)
+            {
+                for(i=0;i<j+1;i++)
+                    fields[k+i] = m1 + m2 * i;
+                k = k + j + 1;
+            }
+        }
+    }
+    while(p2 != NULL);
+    nField = k;
+    maxField = fields[0];
+    minField = fields[0];
+    sprintf(text, "Number of experiments: %d\nFiels: ",nField);
+    for(k=1;k<nField;k++)
+    {
+        if(fields[k] > maxField)
+            maxField = fields[k];
+        if(fields[k] < minField)
+            minField = fields[k];
+        printf("\n%.2f",fields[k]);
+        sprintf(text,"%s%.0f, ",text,fields[k]);
+    }
+    sprintf(text,"%s\n%s",text, "Continue ? [y | n]");
+    
+    answer=Gets(text, "y");
+    if ((answer == 0) || (answer[0]=='n'))
+        ABORT    
+        
+/*******************************************************************/                
+
+    if ((fabs(maxField) > maxPolField) || (fabs(minField) > maxPolField))
+    {
+	sprintf(message, "Polarizer fields are out Of range\nLimit is %.2f",maxPolField);
+	STOPMSG( message );
+    }
+
+
+    expTime = 0;
+    k = 0;
+    TIMES(nField)
+      SETCURDATA
+      expTime += CalcExpTime();
+      STOREPAR(constantVariable, fields[k]);
+      if (DEBUG==1)
+         printf( "Set %s to %.2f\n", constantVariable, fields[k]);
+      k++;
+      IEXPNO
+    END
+    DEXPNO
+
+    PrintExpTime(expTime, nField);
+    /* Turn zg safety off if on. Turn it back on at the end. */
+    envpnt = getenv("UXNMR_SAFETY");
+    zgsafety = 0;
+    if (envpnt != NULL)
+    {
+	if (strcasecmp(envpnt, "on") == 0)
+	{
+	    zgsafety = 1;
+	    CPR_exec("env set UXNMR_SAFETY=off", WAIT_TERM);
+	}
+    }
+
+    expno = startExpno;
+    k = 0;
+    SETCURDATA
+    TIMES(nField)
+      (void) sprintf(statusline,"running experiment # %d", loopcount1+1);
+      Show_status(statusline);      
+      sprintf(message, "Polarizer field: %.2f Gauss\n", fields[k]);
+      trimTitle(message);
+      sleep(2); 
+      XAU("runpol","");
+      IEXPNO
+      k++;
+    END
+    DEXPNO
+
+    if (zgsafety == 1)
+	CPR_exec("env set UXNMR_SAFETY=on", WAIT_TERM);
+
+    return 0;
+}
+
+

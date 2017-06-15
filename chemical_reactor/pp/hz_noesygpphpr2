@@ -1,0 +1,114 @@
+;noesygpphpr
+;avance-version (10/02/10)
+;2D homonuclear correlation via dipolar coupling 
+;dipolar coupling may be due to noe or chemical exchange.
+;phase sensitive
+;with presaturation during relaxation delay and mixing time
+;with gradient pulses in mixing time
+;
+;J. Jeener, B.H. Meier, P. Bachmann & R.R. Ernst, J. Chem. Phys. 71,
+;   4546-4553 (1979)
+;R. Wagner & S. Berger, J. Magn. Reson. 123 A, 119-121 (1996)
+;
+;$CLASS=HighRes
+;$DIM=2D
+;$TYPE=
+;$SUBTYPE=
+;$COMMENT=
+;$RECOMMEND=y
+
+
+#include <Avance.incl>
+#include <Grad.incl>
+#include <Delay.incl>
+
+
+"d11=30m"
+"d12=20u"
+
+
+"in0=inf1"
+
+"d0=in0/2-p1*4/3.1416"
+
+
+"TAU=d8-p16-d16-d12-58u"
+
+
+"acqt0=-p1*2/3.1416"
+define delay halfd1
+"halfd1 = d1*0.5"
+
+1 ze
+2 d11
+3 d12 pl9:f1
+  halfd1 cw:f1 ph29
+  d13 do:f1
+  d13 fq=cnst20:f1
+  halfd1 cw:f1 ph29
+  d13 do:f1
+  d13 fq=0:f1
+  d12 pl1:f1
+
+  p1 ph1
+  d0
+  p1 ph2
+  d12 pl9:f1
+  TAU cw:f1
+  4u do:f1
+  50u UNBLKGRAD
+  p16:gp1
+  d16 pl1:f1
+  4u BLKGRAD
+  p1 ph3
+  go=2 ph31
+  d11 mc #0 to 2 F1PH(calph(ph1, +90) & calph(ph29, +90), caldel(d0, +in0))
+exit
+
+
+ph1=0 2 
+ph2=0 0 0 0 0 0 0 0 2 2 2 2 2 2 2 2
+ph3=0 0 2 2 1 1 3 3
+ph4=0
+ph29=0
+ph31=0 2 2 0 1 3 3 1 2 0 0 2 3 1 1 3
+
+
+;pl1 : f1 channel - power level for pulse (default)
+;pl9 : f1 channel - power level for presaturation
+;p1 : f1 channel -  90 degree high power pulse
+;p16: homospoil/gradient pulse                       [1 msec]
+;d0 : incremented delay (2D)
+;d1 : relaxation delay; 1-5 * T1
+;d8 : mixing time
+;d11: delay for disk I/O                             [30 msec]
+;d12: delay for power switching                      [20 usec]
+;d16: delay for homospoil/gradient recovery
+;inf1: 1/SW = 2 * DW
+;in0: 1/(1 * SW) = 2 * DW
+;nd0: 1
+;NS: 2 * n
+;DS: 16
+;td1: number of experiments
+;FnMODE: States-TPPI, TPPI, States or QSEQ
+
+
+;use gradient ratio:    gp 1
+;                         40
+
+;for z-only gradients:
+;gpz1: 40%
+
+;use gradient files:   
+;gpnam1: SINE.100
+
+
+;Processing
+
+;PHC0(F1): 90
+;PHC1(F1): -180
+;FCOR(F1): 1
+
+
+
+;$Id: noesygpphpr,v 1.1.2.1 2010/02/10 16:30:10 ber Exp $
